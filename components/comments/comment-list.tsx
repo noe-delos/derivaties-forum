@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import { useEffect, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useInView } from "react-intersection-observer";
 import { Loader2, MessageCircle } from "lucide-react";
@@ -11,8 +10,8 @@ import { CommentForm } from "./comment-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { fetchComments } from "@/lib/services/comments";
-import { useAuth } from "@/hooks/use-auth";
-import { Comment, User as UserType } from "@/lib/types";
+import { useAuth } from "@/lib/providers/auth-provider";
+import { useState } from "react";
 
 interface CommentListProps {
   postId: string;
@@ -20,11 +19,9 @@ interface CommentListProps {
 }
 
 export function CommentList({ postId, className }: CommentListProps) {
-  const [profile, setProfile] = useState<UserType | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const { supabase } = useAuth();
+  const { isAuthenticated, profile } = useAuth();
   const { ref, inView } = useInView();
-  const [showCommentForm, setShowCommentForm] = useState(false);
+  const [activeEditor, setActiveEditor] = useState<string | null>(null);
 
   const {
     data,
@@ -46,59 +43,6 @@ export function CommentList({ postId, className }: CommentListProps) {
   });
 
   const comments = data?.pages.flatMap((page) => page.data) ?? [];
-
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        console.log("session", session);
-        if (session?.user) {
-          setIsAuthenticated(true);
-
-          // Fetch user profile
-          const { data } = await supabase
-            .from("users")
-            .select("*")
-            .eq("id", session.user.id)
-            .single();
-
-          setProfile(data as UserType);
-        } else {
-          setIsAuthenticated(false);
-          setProfile(null);
-        }
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-      }
-    };
-
-    fetchUserData();
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_IN" && session?.user) {
-        setIsAuthenticated(true);
-        const { data } = await supabase
-          .from("users")
-          .select("*")
-          .eq("id", session.user.id)
-          .single();
-        setProfile(data as UserType);
-      } else if (event === "SIGNED_OUT") {
-        setIsAuthenticated(false);
-        setProfile(null);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [supabase]);
 
   if (isLoading) {
     return (
@@ -131,60 +75,53 @@ export function CommentList({ postId, className }: CommentListProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setShowCommentForm(!showCommentForm)}
+            onClick={() =>
+              setActiveEditor(activeEditor === "main" ? null : "main")
+            }
           >
-            {showCommentForm ? "Annuler" : "Commenter"}
+            {activeEditor === "main" ? "Annuler" : "Commenter"}
           </Button>
         )}
       </div>
 
-      {showCommentForm && isAuthenticated && (
+      {activeEditor === "main" && isAuthenticated && (
         <div className="mb-6">
           <CommentForm
             postId={postId}
-            onSuccess={() => setShowCommentForm(false)}
+            onSuccess={() => setActiveEditor(null)}
           />
         </div>
       )}
 
       {comments.length === 0 ? (
-        <Card>
-          <CardContent className="p-6 text-center">
-            <MessageCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground">
-              Aucun commentaire pour le moment.
+        <div className="text-center text-muted-foreground py-8">
+          <MessageCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <p>Aucun commentaire pour le moment.</p>
+          {isAuthenticated && (
+            <p className="text-sm text-muted-foreground mt-2">
+              Soyez le premier à commenter !
             </p>
-            {isAuthenticated && (
-              <p className="text-sm text-muted-foreground mt-2">
-                Soyez le premier à commenter !
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {comments.map((comment) => (
-            <CommentCard
-              key={comment.id}
-              comment={comment}
-              isBlurred={!isAuthenticated}
-            />
-          ))}
-
-          {hasNextPage && (
-            <div className="flex justify-center">
-              <Button
-                variant="outline"
-                onClick={() => fetchNextPage()}
-                disabled={isFetchingNextPage}
-              >
-                {isFetchingNextPage && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Charger plus de commentaires
-              </Button>
-            </div>
           )}
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {comments.map((comment) => (
+            <div className="relative" key={comment.id}>
+              {comment.parent_id && (
+                <div className="absolute left-0 top-6 bottom-0 w-4 flex items-stretch">
+                  <div className="w-px bg-border mx-2 h-full" />
+                </div>
+              )}
+              <div className={comment.parent_id ? "ml-6" : ""}>
+                <CommentCard
+                  comment={comment}
+                  isBlurred={!isAuthenticated}
+                  activeEditor={activeEditor}
+                  onEditorChange={setActiveEditor}
+                />
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

@@ -54,6 +54,8 @@ interface CreatePostFormProps {
   userId: string;
 }
 
+const RequiredAsterisk = () => <span className="text-destructive ml-1">*</span>;
+
 export function CreatePostForm({ userId }: CreatePostFormProps) {
   const router = useRouter();
 
@@ -173,10 +175,14 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
         <CardContent className="space-y-4">
           {/* Title */}
           <div className="space-y-2">
-            <Label htmlFor="title">Titre *</Label>
+            <Label htmlFor="title">
+              Titre
+              <RequiredAsterisk />
+            </Label>
             <Input
               id="title"
               placeholder="Titre de votre publication..."
+              className="py-6 rounded-2xl transition-shadow cursor-pointer placeholder:text-foreground/20"
               {...form.register("title")}
             />
             {errors.title && (
@@ -187,14 +193,17 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
           {/* Category and Type */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Catégorie *</Label>
+              <Label>
+                Catégorie
+                <RequiredAsterisk />
+              </Label>
               <Select
                 value={watch("category")}
                 onValueChange={(value: CreatePostForm["category"]) =>
                   setValue("category", value)
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger className="py-6 rounded-2xl shadow-soft hover:shadow-soft-md transition-shadow cursor-pointer">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -208,14 +217,17 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label>Type de publication *</Label>
+              <Label>
+                Type de publication
+                <RequiredAsterisk />
+              </Label>
               <Select
                 value={watch("type")}
                 onValueChange={(value: CreatePostForm["type"]) =>
                   setValue("type", value)
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger className="py-6 rounded-2xl shadow-soft hover:shadow-soft-md transition-shadow cursor-pointer">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -231,7 +243,10 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
 
           {/* Tags */}
           <div className="space-y-2">
-            <Label>Tags *</Label>
+            <Label>
+              Tags
+              <RequiredAsterisk />
+            </Label>
             <div className="flex gap-2">
               <Input
                 placeholder="Ajouter un tag..."
@@ -243,6 +258,7 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
                     addTag();
                   }
                 }}
+                className="py-6 rounded-2xl shadow-soft hover:shadow-soft-md transition-shadow cursor-pointer placeholder:text-foreground/20"
               />
               <Button type="button" onClick={addTag} size="sm">
                 <Plus className="h-4 w-4" />

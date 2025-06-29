@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unescaped-entities */
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useInView } from "react-intersection-observer";
 import { Loader2 } from "lucide-react";
@@ -11,7 +11,7 @@ import { PostCard } from "./post-card";
 import { PostSkeleton } from "./post-skeleton";
 import { fetchPosts } from "@/lib/services/posts";
 import { PostCategory, SearchFilters } from "@/lib/types";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/lib/providers/auth-provider";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -22,68 +22,11 @@ interface PostsFeedProps {
 }
 
 export function PostsFeed({ category, filters, className }: PostsFeedProps) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [profile, setProfile] = useState(null);
-  const { supabase } = useAuth();
+  const { isAuthenticated, profile } = useAuth();
   const { ref, inView } = useInView({
     threshold: 0,
     rootMargin: "100px",
   });
-
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        if (session?.user) {
-          setIsAuthenticated(true);
-
-          // Fetch user profile
-          const { data } = await supabase
-            .from("users")
-            .select("*")
-            .eq("id", session.user.id)
-            .single();
-
-          setProfile(data);
-        } else {
-          setIsAuthenticated(false);
-          setProfile(null);
-        }
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-      }
-    };
-
-    fetchUserData();
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        setIsAuthenticated(true);
-
-        // Fetch user profile
-        const { data } = await supabase
-          .from("users")
-          .select("*")
-          .eq("id", session.user.id)
-          .single();
-
-        setProfile(data);
-      } else {
-        setIsAuthenticated(false);
-        setProfile(null);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [supabase]);
 
   const {
     data,

@@ -8,6 +8,7 @@ import {
 
 import { PostCard } from "@/components/posts/post-card";
 import { CommentList } from "@/components/comments/comment-list";
+import { BackButton } from "@/components/ui/back-button";
 import { fetchPost } from "@/lib/services/posts";
 import { fetchComments } from "@/lib/services/comments";
 import { createClient } from "@/utils/supabase/server";
@@ -65,10 +66,19 @@ export default async function PostPage({ params }: PostPageProps) {
     // Get the post data to check if it exists
     const post = await fetchPost(id, isAuthenticated);
 
-    console.log("&@@@@", isAuthenticated, profile, post);
+    console.log(
+      "&@@@@",
+      isAuthenticated,
+      profile,
+      post,
+      isAuthenticated && !post.is_public
+    );
     return (
       <HydrationBoundary state={dehydrate(queryClient)}>
-        <div className="max-w-4xl space-y-8 pl-10">
+        <div className="max-w-4xl space-y-2 pl-10">
+          {/* Back Button */}
+          <BackButton />
+
           {/* Post */}
           <PostCard
             post={post}

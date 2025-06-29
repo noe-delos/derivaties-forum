@@ -40,28 +40,60 @@ export function MainLayoutClient({
                 <div className="lg:col-span-3">{children}</div>
                 <div className="hidden lg:block">
                   {/* Right sidebar for ads/CTA */}
-                  <div className="sticky top-20 space-y-4">
-                    <div className="bg-muted/50 rounded-lg p-4 text-center">
-                      <div className="h-32 bg-muted rounded flex items-center justify-center">
-                        <span className="text-muted-foreground text-sm">
-                          Publicité
-                        </span>
+                  <div className="sticky top-20 space-y-6">
+                    {/* First Ad */}
+                    <a
+                      href="https://youtu.be/Hla7a2oWlMg"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="relative w-full aspect-video overflow-hidden rounded-xl group block"
+                    >
+                      {/* Background Image */}
+                      <img
+                        src="https://i.ytimg.com/vi/Hla7a2oWlMg/maxresdefault.jpg"
+                        alt="Derivatives Coaching"
+                        className="absolute inset-0 w-full h-full object-contain bg-black/90 group-hover:scale-105 transition-transform duration-700"
+                      />
+                      {/* Gradient Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30" />
+
+                      {/* CTA Button */}
+                      <div className="absolute bottom-4 right-4">
+                        <div className="relative">
+                          <div className="absolute inset-0 backdrop-blur-xs bg-black/10 rounded-lg" />
+                          <span className="relative px-4 py-2 block font-medium text-white text-sm hover:scale-105 transition-all">
+                            Accéder
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="bg-muted/50 rounded-lg p-4 text-center">
-                      <div className="h-32 bg-muted rounded flex items-center justify-center">
-                        <span className="text-muted-foreground text-sm">
-                          Publicité
-                        </span>
+                    </a>
+
+                    {/* Second Ad */}
+                    <a
+                      href="https://www.youtube.com/watch?v=3pd_C9bCWYQ&t=1s"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="relative w-full aspect-video overflow-hidden rounded-xl group block"
+                    >
+                      {/* Background Image */}
+                      <img
+                        src="https://i.ytimg.com/vi/3pd_C9bCWYQ/hqdefault.jpg"
+                        alt="Formation Elite"
+                        className="absolute inset-0 w-full h-full object-cover object-center bg-black/90 group-hover:scale-105 transition-transform duration-700"
+                      />
+                      {/* Gradient Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30" />
+
+                      {/* CTA Button */}
+                      <div className="absolute bottom-4 right-4">
+                        <div className="relative">
+                          <div className="absolute inset-0 backdrop-blur-xs bg-black/10 rounded-lg" />
+                          <span className="relative px-4 py-2 block font-medium text-white text-sm hover:scale-105 transition-all">
+                            Accéder
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="bg-muted/50 rounded-lg p-4 text-center">
-                      <div className="h-32 bg-muted rounded flex items-center justify-center">
-                        <span className="text-muted-foreground text-sm">
-                          Publicité
-                        </span>
-                      </div>
-                    </div>
+                    </a>
                   </div>
                 </div>
               </div>

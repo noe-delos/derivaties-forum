@@ -59,12 +59,21 @@ importers:
       '@tanstack/react-query-devtools':
         specifier: ^5.81.2
         version: 5.81.2(@tanstack/react-query@5.81.2(react@19.1.0))(react@19.1.0)
+      '@tiptap/extension-bullet-list':
+        specifier: ^2.23.0
+        version: 2.23.0(@tiptap/core@3.0.0-beta.16(@tiptap/pm@3.0.0-beta.16))
       '@tiptap/extension-image':
         specifier: ^2.22.3
         version: 2.22.3(@tiptap/core@3.0.0-beta.16(@tiptap/pm@3.0.0-beta.16))
       '@tiptap/extension-link':
         specifier: ^2.22.3
         version: 2.22.3(@tiptap/core@3.0.0-beta.16(@tiptap/pm@3.0.0-beta.16))(@tiptap/pm@3.0.0-beta.16)
+      '@tiptap/extension-list-item':
+        specifier: ^2.23.0
+        version: 2.23.0(@tiptap/core@3.0.0-beta.16(@tiptap/pm@3.0.0-beta.16))
+      '@tiptap/extension-ordered-list':
+        specifier: ^2.23.0
+        version: 2.23.0(@tiptap/core@3.0.0-beta.16(@tiptap/pm@3.0.0-beta.16))
       '@tiptap/extension-placeholder':
         specifier: ^2.22.3
         version: 2.22.3(@tiptap/core@3.0.0-beta.16(@tiptap/pm@3.0.0-beta.16))(@tiptap/pm@3.0.0-beta.16)
@@ -1071,6 +1080,11 @@ packages:
       '@tiptap/core': 3.0.0-beta.16
       '@tiptap/pm': 3.0.0-beta.16
 
+  '@tiptap/extension-bullet-list@2.23.0':
+    resolution: {integrity: sha512-YrmH5AVSkpCQ7k1Orm8hlzDeUO7rxpQkS51sr2w+ruruKIun/X6V0phuLee+f7DBrzHenBcuU6gBtU6vgGPYFw==}
+    peerDependencies:
+      '@tiptap/core': ^2.7.0
+
   '@tiptap/extension-bullet-list@3.0.0-beta.16':
     resolution: {integrity: sha512-cBSW0CwZuCbwKY6LA7O2QLCx6cFFo+EVE+RjUocnssKNLMaFl5boJRr4q2dzuGfYKs1U++Xr8YX7K4TiKwQ8AQ==}
     peerDependencies:
@@ -1147,6 +1161,11 @@ packages:
       '@tiptap/core': 3.0.0-beta.16
       '@tiptap/pm': 3.0.0-beta.16
 
+  '@tiptap/extension-list-item@2.23.0':
+    resolution: {integrity: sha512-tYhLqCaQRjX2S6ICt8FJ+eCAxBMVtXWth6dWt3w7wpkoCVU6n0Dva/2Z3x5lNJPZxUKrsqXc1oYOgvY1pUYyAA==}
+    peerDependencies:
+      '@tiptap/core': ^2.7.0
+
   '@tiptap/extension-list-item@3.0.0-beta.16':
     resolution: {integrity: sha512-x9u1rtqC0qykTCBP+hBSS85ECWMbaOEuijG5eHUkoTpvUZNC8z9yufwuk57MRWP66Jg9yp5A8n2g2oRpBlRqOA==}
     peerDependencies:
@@ -1162,6 +1181,11 @@ packages:
     peerDependencies:
       '@tiptap/core': 3.0.0-beta.16
       '@tiptap/pm': 3.0.0-beta.16
+
+  '@tiptap/extension-ordered-list@2.23.0':
+    resolution: {integrity: sha512-IMlPpAPuiFl5L5QwP0aFb8jmJtOceNy4E4tUZulvqARnrzFv//wSuHBZKJziygvm/XK7VcV/clk4fCk/ca5r4g==}
+    peerDependencies:
+      '@tiptap/core': ^2.7.0
 
   '@tiptap/extension-ordered-list@3.0.0-beta.16':
     resolution: {integrity: sha512-yzf8x9tKezwOJcDojNFl9IsjqsIaxktUGabFsC+/fWoTtxxYOtnkrI7T6rK0ixh7KJzR35lxK+/gsL+241YNcw==}
@@ -3741,6 +3765,10 @@ snapshots:
       '@tiptap/pm': 3.0.0-beta.16
     optional: true
 
+  '@tiptap/extension-bullet-list@2.23.0(@tiptap/core@3.0.0-beta.16(@tiptap/pm@3.0.0-beta.16))':
+    dependencies:
+      '@tiptap/core': 3.0.0-beta.16(@tiptap/pm@3.0.0-beta.16)
+
   '@tiptap/extension-bullet-list@3.0.0-beta.16(@tiptap/extension-list@3.0.0-beta.16(@tiptap/core@3.0.0-beta.16(@tiptap/pm@3.0.0-beta.16))(@tiptap/pm@3.0.0-beta.16))':
     dependencies:
       '@tiptap/extension-list': 3.0.0-beta.16(@tiptap/core@3.0.0-beta.16(@tiptap/pm@3.0.0-beta.16))(@tiptap/pm@3.0.0-beta.16)
@@ -3806,6 +3834,10 @@ snapshots:
       '@tiptap/pm': 3.0.0-beta.16
       linkifyjs: 4.3.1
 
+  '@tiptap/extension-list-item@2.23.0(@tiptap/core@3.0.0-beta.16(@tiptap/pm@3.0.0-beta.16))':
+    dependencies:
+      '@tiptap/core': 3.0.0-beta.16(@tiptap/pm@3.0.0-beta.16)
+
   '@tiptap/extension-list-item@3.0.0-beta.16(@tiptap/extension-list@3.0.0-beta.16(@tiptap/core@3.0.0-beta.16(@tiptap/pm@3.0.0-beta.16))(@tiptap/pm@3.0.0-beta.16))':
     dependencies:
       '@tiptap/extension-list': 3.0.0-beta.16(@tiptap/core@3.0.0-beta.16(@tiptap/pm@3.0.0-beta.16))(@tiptap/pm@3.0.0-beta.16)
@@ -3818,6 +3850,10 @@ snapshots:
     dependencies:
       '@tiptap/core': 3.0.0-beta.16(@tiptap/pm@3.0.0-beta.16)
       '@tiptap/pm': 3.0.0-beta.16
+
+  '@tiptap/extension-ordered-list@2.23.0(@tiptap/core@3.0.0-beta.16(@tiptap/pm@3.0.0-beta.16))':
+    dependencies:
+      '@tiptap/core': 3.0.0-beta.16(@tiptap/pm@3.0.0-beta.16)
 
   '@tiptap/extension-ordered-list@3.0.0-beta.16(@tiptap/extension-list@3.0.0-beta.16(@tiptap/core@3.0.0-beta.16(@tiptap/pm@3.0.0-beta.16))(@tiptap/pm@3.0.0-beta.16))':
     dependencies:

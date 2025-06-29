@@ -13,7 +13,7 @@ export default async function CreatePostPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6 pl-10">
       <div>
         <h1 className="text-3xl font-bold">Créer une publication</h1>
         <p className="text-muted-foreground">

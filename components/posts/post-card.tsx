@@ -5,14 +5,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
-import {
-  ChevronUp,
-  ChevronDown,
-  MessageCircle,
-  Share2,
-  MoreHorizontal,
-  Eye,
-} from "lucide-react";
+import { Icon } from "@iconify/react";
+import { Eye } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -31,13 +25,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import {
-  Post,
-  POST_CATEGORIES,
-  POST_TYPES,
-  User as UserType,
-} from "@/lib/types";
+import { Post, POST_CATEGORIES, User as UserType } from "@/lib/types";
 import { votePost } from "@/lib/services/posts";
+import { useRouter } from "next/navigation";
 
 interface PostCardProps {
   post: Post;
@@ -49,6 +39,15 @@ interface PostCardProps {
   profile?: UserType | null;
 }
 
+const categoryColors: Record<string, string> = {
+  interview: "bg-blue-500 text-white",
+  salary: "bg-green-500 text-white",
+  internship: "bg-purple-500 text-white",
+  career: "bg-orange-500 text-white",
+  networking: "bg-pink-500 text-white",
+  general: "bg-gray-500 text-white",
+};
+
 export function PostCard({
   post,
   isBlurred = false,
@@ -59,6 +58,8 @@ export function PostCard({
   profile = null,
 }: PostCardProps) {
   const [isVoting, setIsVoting] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const router = useRouter();
 
   const getUserInitials = (user: any) => {
     if (user?.first_name && user?.last_name) {
@@ -102,23 +103,28 @@ export function PostCard({
     }
   };
 
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: post.title,
-          url: `${window.location.origin}/post/${post.id}`,
-        });
-      } catch (error) {
-        console.log("Error sharing:", error);
-      }
-    } else {
-      // Fallback: copy to clipboard
-      await navigator.clipboard.writeText(
-        `${window.location.origin}/post/${post.id}`
-      );
-      toast.success("Lien copié dans le presse-papiers!");
+  const handleCopyLink = async () => {
+    await navigator.clipboard.writeText(
+      `${window.location.origin}/post/${post.id}`
+    );
+    toast.success("Lien copié dans le presse-papiers!");
+    setShareOpen(false);
+  };
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't navigate if clicking on interactive elements
+    const target = e.target as HTMLElement;
+    if (
+      target.closest("button") ||
+      target.closest("a") ||
+      target.closest('[role="button"]') ||
+      expanded
+    ) {
+      return;
     }
+
+    // Navigate to post detail
+    router.push(`/post/${post.id}`);
   };
 
   const displayContent = expanded
@@ -128,19 +134,26 @@ export function PostCard({
     : post.content;
 
   const userVote = post.user_vote?.vote_type;
+  const netVotes = post.upvotes - post.downvotes;
 
   return (
-    <Card className={cn("w-full", className)}>
-      <CardHeader className="pb-3">
+    <Card
+      className={cn(
+        "w-full hover:bg-muted/50 hover:cursor-pointer transition-colors",
+        className
+      )}
+      onClick={handleCardClick}
+    >
+      <CardHeader className="pb-0">
         <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-1">
             <Link href={`/profile/${post.user?.id}`}>
-              <Avatar className="h-8 w-8 cursor-pointer hover:opacity-80 transition-opacity">
+              <Avatar className="h-10 w-10 cursor-pointer hover:opacity-80 transition-opacity">
                 <AvatarImage
                   src={post.user?.profile_picture_url}
                   alt={getUserDisplayName(post.user)}
                 />
-                <AvatarFallback className="text-xs">
+                <AvatarFallback className="text-sm">
                   {getUserInitials(post.user)}
                 </AvatarFallback>
               </Avatar>
@@ -153,53 +166,25 @@ export function PostCard({
                 >
                   {getUserDisplayName(post.user)}
                 </Link>
-                {post.user?.role !== "user" && (
-                  <Badge variant="outline" className="text-xs">
-                    {post.user?.role}
-                  </Badge>
-                )}
-              </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>
+                <span className="text-xs text-muted-foreground ml-1">
                   {formatDistanceToNow(new Date(post.created_at), {
                     locale: fr,
                     addSuffix: true,
                   })}
                 </span>
-                <span>•</span>
-                <Badge variant="secondary" className="text-xs">
-                  {POST_CATEGORIES[post.category]}
-                </Badge>
-                <Badge variant="outline" className="text-xs">
-                  {POST_TYPES[post.type]}
-                </Badge>
               </div>
             </div>
           </div>
 
-          {showActions && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleShare}>
-                  <Share2 className="mr-2 h-4 w-4" />
-                  Partager
-                </DropdownMenuItem>
-                {isAuthenticated && profile?.id === post.user_id && (
-                  <>
-                    <DropdownMenuItem>Modifier</DropdownMenuItem>
-                    <DropdownMenuItem className="text-destructive">
-                      Supprimer
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+          {/* Category on top right */}
+          <Badge
+            className={cn(
+              "text-sm px-3 py-1 rounded-full font-medium",
+              categoryColors[post.category] || categoryColors.general
+            )}
+          >
+            {POST_CATEGORIES[post.category]}
+          </Badge>
         </div>
       </CardHeader>
 
@@ -208,27 +193,9 @@ export function PostCard({
           {expanded ? (
             <h1 className="font-bold text-2xl">{post.title}</h1>
           ) : (
-            <Link href={`/post/${post.id}`}>
-              <h3 className="font-semibold text-lg hover:text-primary transition-colors cursor-pointer">
-                {post.title}
-              </h3>
-            </Link>
-          )}
-
-          {/* Post Tags - Only show in expanded view */}
-          {expanded && post.tags && post.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {post.tags.slice(0, expanded ? 10 : 3).map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-xs">
-                  {tag}
-                </Badge>
-              ))}
-              {!expanded && post.tags.length > 3 && (
-                <Badge variant="secondary" className="text-xs">
-                  +{post.tags.length - 3}
-                </Badge>
-              )}
-            </div>
+            <h3 className="font-semibold text-lg hover:text-primary transition-colors cursor-pointer">
+              {post.title}
+            </h3>
           )}
 
           {/* Media Gallery */}
@@ -351,60 +318,31 @@ export function PostCard({
                 if (files.length === 0) return null;
 
                 return (
-                  <div className="border rounded-lg p-4 bg-muted/20">
-                    <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                      <svg
-                        className="h-4 w-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                  <div className="flex flex-wrap gap-3">
+                    {files.map((file, index) => (
+                      <a
+                        key={index}
+                        href={file.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex flex-col items-center gap-2 group"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                        />
-                      </svg>
-                      Fichiers joints ({files.length})
-                    </h4>
-                    <div className="space-y-2">
-                      {files.map((file, index) => (
-                        <a
-                          key={index}
-                          href={file.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
-                        >
-                          <div className="flex-shrink-0 w-8 h-8 bg-primary/10 rounded flex items-center justify-center">
-                            <svg
-                              className="h-4 w-4 text-primary"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        <div className="relative size-[4rem] bg-white rounded-lg shadow-sm border border-gray-200 flex items-center justify-center group-hover:shadow-md transition-shadow">
+                          {file.file_name?.toLowerCase().endsWith(".pdf") && (
+                            <div className="absolute -bottom-1 -right-2">
+                              <img
+                                src="/pdf.png"
+                                alt="PDF"
+                                className="w-auto h-7"
                               />
-                            </svg>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {file.file_name}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {file.file_size
-                                ? `${Math.round(file.file_size / 1024)} KB`
-                                : "Fichier"}
-                            </p>
-                          </div>
-                        </a>
-                      ))}
-                    </div>
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-xs text-center max-w-[7rem] truncate">
+                          {file.file_name || "Fichier"}
+                        </p>
+                      </a>
+                    ))}
                   </div>
                 );
               })()}
@@ -437,17 +375,17 @@ export function PostCard({
       {showActions && (
         <CardFooter className="pt-3">
           <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-4">
-              {/* Voting */}
-              <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
+              {/* Voting - styled similar to screenshot */}
+              <div className="flex items-center bg-orange-500 text-white rounded-full px-3 py-1 gap-1">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => handleVote(1)}
                   disabled={!isAuthenticated || isVoting}
                   className={cn(
-                    "h-8 w-8 p-0",
-                    userVote === 1 && "text-green-600 bg-green-50"
+                    "h-6 w-6 p-0 text-white hover:bg-orange-600 hover:text-white",
+                    userVote === 1 && "bg-orange-600"
                   )}
                   title={
                     !isAuthenticated
@@ -455,19 +393,24 @@ export function PostCard({
                       : "Voter pour"
                   }
                 >
-                  <ChevronUp className="h-4 w-4" />
+                  <Icon
+                    icon={
+                      userVote === 1
+                        ? "tabler:arrow-big-up-filled"
+                        : "tabler:arrow-big-up"
+                    }
+                    className="h-4 w-4"
+                  />
                 </Button>
-                <span className="text-sm font-medium min-w-[2rem] text-center">
-                  {post.upvotes - post.downvotes}
-                </span>
+                <span className="text-sm font-medium px-1">{netVotes}</span>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => handleVote(-1)}
                   disabled={!isAuthenticated || isVoting}
                   className={cn(
-                    "h-8 w-8 p-0",
-                    userVote === -1 && "text-red-600 bg-red-50"
+                    "h-6 w-6 p-0 text-white hover:bg-orange-600 hover:text-white",
+                    userVote === -1 && "bg-orange-600"
                   )}
                   title={
                     !isAuthenticated
@@ -475,25 +418,69 @@ export function PostCard({
                       : "Voter contre"
                   }
                 >
-                  <ChevronDown className="h-4 w-4" />
+                  <Icon
+                    icon={
+                      userVote === -1
+                        ? "tabler:arrow-big-down-filled"
+                        : "tabler:arrow-big-down"
+                    }
+                    className="h-4 w-4"
+                  />
                 </Button>
               </div>
 
               {/* Comments */}
-              <Button variant="ghost" size="sm" asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                asChild
+                className="bg-foreground/10 hover:bg-foreground/20 rounded-full px-3"
+              >
                 <Link
                   href={`/post/${post.id}#comments`}
                   className="flex items-center gap-2"
                 >
-                  <MessageCircle className="h-4 w-4" />
+                  <Icon icon="iconamoon:comment-fill" className="h-4 w-4" />
                   <span>{post.comments_count}</span>
                 </Link>
               </Button>
 
               {/* Share */}
-              <Button variant="ghost" size="sm" onClick={handleShare}>
-                <Share2 className="h-4 w-4" />
-              </Button>
+              <DropdownMenu open={shareOpen} onOpenChange={setShareOpen}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="bg-foreground/10 hover:bg-foreground/20 rounded-full px-3 gap-2"
+                  >
+                    <Icon icon="majesticons:share" className="h-4 w-4" />
+                    <span>Partager</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-auto p-2">
+                  <DropdownMenuItem>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCopyLink}
+                      className="w-full justify-start"
+                    >
+                      <Icon icon="tabler:copy" className="mr-2 h-4 w-4" />
+                      Copier le lien
+                    </Button>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Finance tag on the right */}
+            <div>
+              <Badge
+                variant="secondary"
+                className="text-base px-4 py-1 font-medium"
+              >
+                Finance
+              </Badge>
             </div>
           </div>
         </CardFooter>
