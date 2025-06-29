@@ -33,13 +33,6 @@ export default async function PopularPage() {
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold">Publications populaires</h1>
-          <p className="text-muted-foreground">
-            Les discussions les plus appréciées de la communauté
-          </p>
-        </div>
-
         <PostsFeed filters={{ sortBy: "popular" }} />
       </div>
     </HydrationBoundary>

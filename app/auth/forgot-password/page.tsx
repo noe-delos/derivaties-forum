@@ -1,18 +1,18 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { SignupForm } from "@/components/auth/signup-form";
+import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
 
 export const metadata: Metadata = {
-  title: "Inscription - DERIVATIVES",
-  description: "Créez votre compte DERIVATIVES",
+  title: "Mot de passe oublié - DERIVATIVES",
+  description: "Réinitialisez votre mot de passe",
 };
 
-export default function SignupPage() {
+export default function ForgotPasswordPage() {
   return (
     <div className="min-h-screen flex p-6">
       {/* Left side - Gradient background with text */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-indigo-900 via-blue-800 to-blue-900 relative overflow-hidden rounded-2xl">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-900 via-indigo-800 to-blue-900 relative overflow-hidden rounded-2xl">
         <div className="absolute inset-0 bg-black/30"></div>
         {/* Decorative waves */}
         <div className="absolute inset-0 opacity-30">
@@ -23,7 +23,7 @@ export default function SignupPage() {
           >
             <path
               fill="rgba(255,255,255,0.1)"
-              d="M0,160L48,149.3C96,139,192,117,288,117.3C384,117,480,139,576,154.7C672,171,768,181,864,165.3C960,149,1056,107,1152,101.3C1248,96,1344,128,1392,144L1440,160L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"
+              d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,122.7C672,117,768,139,864,149.3C960,160,1056,160,1152,138.7C1248,117,1344,75,1392,53.3L1440,32L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"
             />
           </svg>
         </div>
@@ -31,25 +31,24 @@ export default function SignupPage() {
         <div className="relative z-10 flex flex-col justify-end pb-16 p-12 text-white">
           <div className="mb-8">
             <p className="text-sm font-medium tracking-wider opacity-80 mb-8">
-              REJOIGNEZ L&apos;EXCELLENCE
+              RÉCUPÉRATION
             </p>
             <h1 className="text-5xl font-bold leading-tight mb-6">
-              Démarrez
+              Pas De
               <br />
-              Votre Carrière
+              Souci,
               <br />
-              En Finance
+              Ça Arrive
             </h1>
             <p className="text-lg opacity-90 leading-relaxed max-w-md">
-              Rejoignez une communauté de professionnels passionnés de finance
-              de marché et développez vos compétences avec les meilleurs experts
-              du secteur.
+              Entrez votre adresse email et nous vous enverrons un lien pour
+              réinitialiser votre mot de passe en toute sécurité.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Right side - Signup form */}
+      {/* Right side - Forgot password form */}
       <div className="flex-1 flex items-center justify-center p-8 bg-white">
         <div className="w-full max-w-md space-y-8">
           {/* Logo */}
@@ -65,25 +64,22 @@ export default function SignupPage() {
 
           <div className="text-center">
             <h2 className="text-3xl font-bold text-gray-900 mb-2">
-              Créer un compte
+              Mot de passe oublié
             </h2>
             <p className="text-gray-600">
-              Rejoignez la communauté des professionnels de la finance de marché
+              Entrez votre email pour recevoir un lien de réinitialisation
             </p>
           </div>
 
-          <SignupForm />
+          <ForgotPasswordForm />
 
-          <div className="text-center">
-            <p className="text-gray-600">
-              Déjà un compte ?{" "}
-              <Link
-                href="/auth/login"
-                className="font-semibold text-blue-600 hover:text-blue-500 transition-colors"
-              >
-                Se connecter
-              </Link>
-            </p>
+          <div className="text-center space-y-4">
+            <Link
+              href="/auth/login"
+              className="block font-semibold text-blue-600 hover:text-blue-500 transition-colors"
+            >
+              ← Retour à la connexion
+            </Link>
           </div>
         </div>
       </div>

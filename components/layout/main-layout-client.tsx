@@ -1,9 +1,11 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Header } from "@/components/layout/header";
+import { getPopularTags } from "@/lib/services/search";
 import { User as UserType } from "@/lib/types";
 
 interface MainLayoutClientProps {
@@ -21,6 +23,13 @@ export function MainLayoutClient({
   const isProfilePage = pathname.startsWith("/profile");
   const isPostPage = pathname.startsWith("/post/");
 
+  // Get popular tags for the header
+  const { data: popularTags = [] } = useQuery({
+    queryKey: ["popular-tags"],
+    queryFn: () => getPopularTags(20),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
@@ -28,7 +37,11 @@ export function MainLayoutClient({
         <div className="flex-1 flex flex-col">
           {/* Conditionally render Header - hide on profile pages */}
           {!isProfilePage && (
-            <Header isAuthenticated={isAuthenticated} profile={profile} />
+            <Header
+              isAuthenticated={isAuthenticated}
+              profile={profile}
+              popularTags={popularTags}
+            />
           )}
 
           <main className="flex-1 container py-6">

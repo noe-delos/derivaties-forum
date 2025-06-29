@@ -10,6 +10,7 @@ import { motion } from "framer-motion";
 import { PostCard } from "./post-card";
 import { PostSkeleton } from "./post-skeleton";
 import { fetchPosts } from "@/lib/services/posts";
+import { enhancedSearchPosts } from "@/lib/services/search";
 import { PostCategory, SearchFilters } from "@/lib/types";
 import { useAuth } from "@/lib/providers/auth-provider";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,14 +19,48 @@ import { Button } from "@/components/ui/button";
 interface PostsFeedProps {
   category?: PostCategory;
   filters?: SearchFilters;
+  searchQuery?: string;
+  isNaturalLanguage?: boolean;
   className?: string;
 }
 
-export function PostsFeed({ category, filters, className }: PostsFeedProps) {
+export function PostsFeed({
+  category,
+  filters,
+  searchQuery = "",
+  isNaturalLanguage = false,
+  className,
+}: PostsFeedProps) {
+  console.log("📋 PostsFeed rendered with props:", {
+    category,
+    filters,
+    searchQuery,
+    isNaturalLanguage,
+    className,
+  });
+
   const { isAuthenticated, profile } = useAuth();
   const { ref, inView } = useInView({
     threshold: 0,
     rootMargin: "100px",
+  });
+
+  // Determine if we should use search or regular fetch
+  const hasSearchQuery = searchQuery.trim().length > 0;
+  const hasFilters =
+    filters &&
+    Object.keys(filters).some((key) => {
+      const value = filters[key as keyof SearchFilters];
+      return Array.isArray(value) ? value.length > 0 : !!value;
+    });
+  const shouldUseSearch = hasSearchQuery || hasFilters;
+
+  console.log("🔍 PostsFeed search decision:", {
+    hasSearchQuery,
+    hasFilters,
+    shouldUseSearch,
+    searchQueryLength: searchQuery.length,
+    filtersCount: filters ? Object.keys(filters).length : 0,
   });
 
   const {
@@ -36,33 +71,78 @@ export function PostsFeed({ category, filters, className }: PostsFeedProps) {
     isLoading,
     error,
   } = useInfiniteQuery({
-    queryKey: ["posts", category, filters, isAuthenticated],
-    queryFn: ({ pageParam = 0 }) =>
-      fetchPosts({
-        pageParam,
-        category,
-        filters,
-        isAuthenticated,
-      }),
-    getNextPageParam: (lastPage) => lastPage.nextPage,
+    queryKey: [
+      "posts",
+      category,
+      filters,
+      searchQuery,
+      isNaturalLanguage,
+      isAuthenticated,
+    ],
+    queryFn: ({ pageParam = 0 }) => {
+      console.log(`📥 PostsFeed queryFn called with pageParam: ${pageParam}`);
+
+      if (shouldUseSearch) {
+        console.log("🔍 Using enhancedSearchPosts");
+        return enhancedSearchPosts({
+          query: searchQuery.trim(),
+          filters: filters || {},
+          pageParam,
+          isAuthenticated,
+          isNaturalLanguage,
+        });
+      } else {
+        console.log("📰 Using regular fetchPosts");
+        return fetchPosts({
+          pageParam,
+          category,
+          filters,
+          isAuthenticated,
+        });
+      }
+    },
+    getNextPageParam: (lastPage) => {
+      console.log("📄 getNextPageParam called with lastPage:", {
+        dataLength: lastPage.data.length,
+        nextPage: lastPage.nextPage,
+      });
+      return lastPage.nextPage;
+    },
     initialPageParam: 0,
   });
 
   const fetchNext = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
+      console.log("📄 Fetching next page...");
       fetchNextPage();
+    } else {
+      console.log("📄 Not fetching next page:", {
+        hasNextPage,
+        isFetchingNextPage,
+      });
     }
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   useEffect(() => {
     if (inView) {
+      console.log("👁️ Intersection observer triggered - fetching next page");
       fetchNext();
     }
   }, [inView, fetchNext]);
 
   const posts = data?.pages.flatMap((page) => page.data) ?? [];
 
+  console.log("📊 PostsFeed current state:", {
+    postsCount: posts.length,
+    pagesLoaded: data?.pages.length || 0,
+    isLoading,
+    hasNextPage,
+    isFetchingNextPage,
+    error: error ? error.message : null,
+  });
+
   if (isLoading) {
+    console.log("⏳ PostsFeed showing loading state");
     return (
       <div className="space-y-4">
         {Array.from({ length: 3 }).map((_, i) => (
@@ -73,6 +153,7 @@ export function PostsFeed({ category, filters, className }: PostsFeedProps) {
   }
 
   if (error) {
+    console.error("❌ PostsFeed error state:", error);
     return (
       <Card className="w-full">
         <CardContent className="p-6 text-center">
@@ -90,14 +171,21 @@ export function PostsFeed({ category, filters, className }: PostsFeedProps) {
   }
 
   if (posts.length === 0) {
+    console.log("📭 PostsFeed showing empty state");
     return (
       <Card className="w-full">
         <CardContent className="p-6 text-center">
           <div className="space-y-4">
-            <p className="text-muted-foreground">Aucune publication trouvée.</p>
-            {category && (
+            <p className="text-muted-foreground">
+              {hasSearchQuery
+                ? "Aucun résultat trouvé pour votre recherche."
+                : "Aucune publication trouvée."}
+            </p>
+            {(category || hasSearchQuery) && (
               <p className="text-sm text-muted-foreground">
-                Essayez de changer de catégorie ou d'ajuster vos filtres.
+                Essayez de changer{" "}
+                {hasSearchQuery ? "vos mots-clés" : "de catégorie"} ou d'ajuster
+                vos filtres.
               </p>
             )}
           </div>
@@ -106,6 +194,7 @@ export function PostsFeed({ category, filters, className }: PostsFeedProps) {
     );
   }
 
+  console.log("✅ PostsFeed rendering posts successfully");
   return (
     <div className={className}>
       <div className="space-y-4">

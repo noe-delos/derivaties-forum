@@ -49,7 +49,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
       <div className="space-y-6">
-        <div>
+        <div className="pl-10">
           <h1 className="text-2xl font-semibold">
             {POST_CATEGORIES[category]}
           </h1>

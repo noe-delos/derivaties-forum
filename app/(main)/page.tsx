@@ -1,41 +1,45 @@
-"use server";
+"use client";
 
-import {
-  HydrationBoundary,
-  QueryClient,
-  dehydrate,
-} from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { PostsFeed } from "@/components/posts/posts-feed";
-import { fetchPosts } from "@/lib/services/posts";
-import { createClient } from "@/lib/supabase/server";
+import { SearchFilters, PostCategory, PostType } from "@/lib/types";
 
-export default async function HomePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const isAuthenticated = !!user;
+export default function HomePage() {
+  const searchParams = useSearchParams();
 
-  const queryClient = new QueryClient();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchFilters, setSearchFilters] = useState<SearchFilters>({});
+  const [isNaturalLanguage, setIsNaturalLanguage] = useState(false);
 
-  // Prefetch the first page of posts
-  await queryClient.prefetchInfiniteQuery({
-    queryKey: ["posts", undefined, undefined, isAuthenticated],
-    queryFn: async ({ pageParam = 0 }) => {
-      return fetchPosts({
-        pageParam,
-        isAuthenticated,
-      });
-    },
-    initialPageParam: 0,
-  });
+  // Initialize search state from URL params
+  useEffect(() => {
+    const query = searchParams.get("q") || "";
+    const category = searchParams.get("category");
+    const type = searchParams.get("type");
+    const sort = searchParams.get("sort") || "recent";
+    const nl = searchParams.get("nl") === "true";
+
+    setSearchQuery(query);
+    setSearchFilters({
+      category: (category as PostCategory) || undefined,
+      type: (type as PostType) || undefined,
+      sortBy: sort as "recent" | "popular" | "comments",
+    });
+    setIsNaturalLanguage(nl);
+  }, [searchParams]);
 
   return (
-    <HydrationBoundary state={dehydrate(queryClient)}>
-      <div className="space-y-6">
-        <PostsFeed />
-      </div>
-    </HydrationBoundary>
+    <div className="space-y-6">
+      {/* Posts Feed */}
+      <PostsFeed
+        category={searchFilters.category}
+        filters={searchFilters}
+        searchQuery={searchQuery}
+        isNaturalLanguage={isNaturalLanguage}
+        className="space-y-4"
+      />
+    </div>
   );
 }
