@@ -1,13 +1,14 @@
 /* eslint-disable react/no-unescaped-entities */
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useInView } from "react-intersection-observer";
 import { Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { PostCard } from "./post-card";
+import { PostSkeleton } from "./post-skeleton";
 import { fetchPosts } from "@/lib/services/posts";
 import { PostCategory, SearchFilters } from "@/lib/types";
 import { useAuth } from "@/hooks/use-auth";
@@ -21,11 +22,68 @@ interface PostsFeedProps {
 }
 
 export function PostsFeed({ category, filters, className }: PostsFeedProps) {
-  const { isAuthenticated } = useAuth();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [profile, setProfile] = useState(null);
+  const { supabase } = useAuth();
   const { ref, inView } = useInView({
     threshold: 0,
     rootMargin: "100px",
   });
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session?.user) {
+          setIsAuthenticated(true);
+
+          // Fetch user profile
+          const { data } = await supabase
+            .from("users")
+            .select("*")
+            .eq("id", session.user.id)
+            .single();
+
+          setProfile(data);
+        } else {
+          setIsAuthenticated(false);
+          setProfile(null);
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    };
+
+    fetchUserData();
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        setIsAuthenticated(true);
+
+        // Fetch user profile
+        const { data } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", session.user.id)
+          .single();
+
+        setProfile(data);
+      } else {
+        setIsAuthenticated(false);
+        setProfile(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   const {
     data,
@@ -63,27 +121,9 @@ export function PostsFeed({ category, filters, className }: PostsFeedProps) {
 
   if (isLoading) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-4">
         {Array.from({ length: 3 }).map((_, i) => (
-          <Card key={i} className="w-full">
-            <CardContent className="p-4">
-              <div className="animate-pulse space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="h-7 w-7 bg-muted rounded-full" />
-                  <div className="space-y-2">
-                    <div className="h-3 w-20 bg-muted rounded" />
-                    <div className="h-2 w-28 bg-muted rounded" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="h-4 w-3/4 bg-muted rounded" />
-                  <div className="h-3 w-full bg-muted rounded" />
-                  <div className="h-3 w-2/3 bg-muted rounded" />
-                </div>
-                <div className="h-24 w-full bg-muted rounded" />
-              </div>
-            </CardContent>
-          </Card>
+          <PostSkeleton key={i} />
         ))}
       </div>
     );
@@ -125,7 +165,7 @@ export function PostsFeed({ category, filters, className }: PostsFeedProps) {
 
   return (
     <div className={className}>
-      <div className="space-y-3">
+      <div className="space-y-4">
         {posts.map((post, index) => {
           // Show blurred content for non-public posts to anonymous users
           const shouldBlur = !isAuthenticated && !post.is_public;
@@ -146,6 +186,8 @@ export function PostsFeed({ category, filters, className }: PostsFeedProps) {
                 isBlurred={shouldBlur}
                 showActions={isAuthenticated || post.is_public}
                 className="transform scale-95"
+                isAuthenticated={isAuthenticated}
+                profile={profile}
               />
             </motion.div>
           );

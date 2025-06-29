@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { ChevronUp, ChevronDown, Reply, MoreHorizontal } from "lucide-react";
@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CommentForm } from "./comment-form";
-import { Comment } from "@/lib/types";
+import { Comment, User as UserType } from "@/lib/types";
 import { useAuth } from "@/hooks/use-auth";
 import { voteComment } from "@/lib/services/comments";
 import { toast } from "sonner";
@@ -33,9 +33,63 @@ export function CommentCard({
   isBlurred = false,
   level = 0,
 }: CommentCardProps) {
-  const { profile, isAuthenticated } = useAuth();
+  const [profile, setProfile] = useState<UserType | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { supabase } = useAuth();
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [isVoting, setIsVoting] = useState(false);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session?.user) {
+          setIsAuthenticated(true);
+
+          // Fetch user profile
+          const { data } = await supabase
+            .from("users")
+            .select("*")
+            .eq("id", session.user.id)
+            .single();
+
+          setProfile(data as UserType);
+        } else {
+          setIsAuthenticated(false);
+          setProfile(null);
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    };
+
+    fetchUserData();
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session?.user) {
+        setIsAuthenticated(true);
+        const { data } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", session.user.id)
+          .single();
+        setProfile(data as UserType);
+      } else if (event === "SIGNED_OUT") {
+        setIsAuthenticated(false);
+        setProfile(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   const handleVote = async (voteType: 1 | -1) => {
     if (!isAuthenticated || !profile) {

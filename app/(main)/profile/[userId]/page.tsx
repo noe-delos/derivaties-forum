@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/server";
@@ -39,7 +38,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
           isAuthenticated={isAuthenticated}
         />
 
-        <ProfilePosts userId={userId} initialPosts={profile.recentPosts} />
+        <ProfilePosts userId={userId} />
       </div>
     );
   } catch (error) {
@@ -75,6 +74,7 @@ export async function generateMetadata({ params }: ProfilePageProps) {
       title: `${displayName} - Forum Finance`,
       description: user.bio || `Profil de ${displayName} sur le forum finance.`,
     };
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return {
       title: "Profil - Forum Finance",

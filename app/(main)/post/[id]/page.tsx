@@ -10,7 +10,8 @@ import { PostCard } from "@/components/posts/post-card";
 import { CommentList } from "@/components/comments/comment-list";
 import { fetchPost } from "@/lib/services/posts";
 import { fetchComments } from "@/lib/services/comments";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/utils/supabase/server";
+import { User as UserType } from "@/lib/types";
 
 interface PostPageProps {
   params: Promise<{
@@ -21,10 +22,24 @@ interface PostPageProps {
 export default async function PostPage({ params }: PostPageProps) {
   const { id } = await params;
   const supabase = await createClient();
+
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const isAuthenticated = !!user;
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  let profile: UserType | null = null;
+  const isAuthenticated = !!session?.user;
+
+  // If user is authenticated, fetch their profile
+  if (session?.user) {
+    const { data } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", session.user.id)
+      .single();
+
+    profile = data as UserType;
+  }
 
   const queryClient = new QueryClient();
 
@@ -50,15 +65,18 @@ export default async function PostPage({ params }: PostPageProps) {
     // Get the post data to check if it exists
     const post = await fetchPost(id, isAuthenticated);
 
+    console.log("&@@@@", isAuthenticated, profile, post);
     return (
       <HydrationBoundary state={dehydrate(queryClient)}>
-        <div className="max-w-4xl mx-auto space-y-8">
+        <div className="max-w-4xl space-y-8 pl-10">
           {/* Post */}
           <PostCard
             post={post}
             isBlurred={!isAuthenticated && !post.is_public}
             showActions={isAuthenticated || post.is_public}
             expanded={true}
+            isAuthenticated={isAuthenticated}
+            profile={profile}
           />
 
           {/* Comments */}

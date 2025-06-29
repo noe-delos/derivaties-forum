@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState } from "react";
@@ -24,13 +23,12 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { TiptapEditor } from "@/components/editor/tiptap-editor";
 import { FileUpload } from "@/components/ui/file-upload";
+import { POST_CATEGORIES, POST_TYPES } from "@/lib/types";
 import {
-  POST_CATEGORIES,
-  POST_TYPES,
-  PostCategory,
-  PostType,
-} from "@/lib/types";
-import { createPostAction } from "@/lib/actions/posts";
+  createPostServer,
+  uploadPostMedia,
+  linkPostMedia,
+} from "@/lib/actions/posts";
 
 const createPostSchema = z.object({
   title: z.string().min(5, "Le titre doit contenir au moins 5 caractères"),
@@ -58,6 +56,7 @@ interface CreatePostFormProps {
 
 export function CreatePostForm({ userId }: CreatePostFormProps) {
   const router = useRouter();
+
   const [isLoading, setIsLoading] = useState(false);
   const [content, setContent] = useState("");
   const [tagInput, setTagInput] = useState("");
@@ -97,76 +96,71 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
     );
   };
 
-  const onSubmit = async (data: CreatePostForm) => {
-    console.log("🚀 Starting form submission with server action...", {
-      data,
-      content,
-    });
+  const onSubmit = async (formData: CreatePostForm) => {
+    if (isLoading) return;
 
     try {
       setIsLoading(true);
-      console.log("⏳ Loading state set to true");
 
-      // Validate content from Tiptap editor - check text content, not HTML
-      const textContent = content.replace(/<[^>]*>/g, "").trim(); // Strip HTML tags
-      console.log("📝 Content validation:", {
-        hasContent: !!content,
-        textContentLength: textContent.length,
-        rawContent: content.substring(0, 100) + "...",
-      });
-
-      if (!content || textContent.length < 10) {
-        console.log("❌ Content validation failed");
+      const textContent = content.replace(/<[^>]*>/g, "").trim();
+      if (textContent.length < 10) {
         toast.error("Le contenu doit contenir au moins 10 caractères");
+        setIsLoading(false);
         return;
       }
 
-      // Prepare data for server action
-      console.log("📋 Preparing data for server action...", {
-        mediaFilesCount: mediaFiles.length,
-        documentFilesCount: documentFiles.length,
+      const { post } = await createPostServer({
+        title: formData.title,
+        content,
+        category: formData.category,
+        type: formData.type,
+        tags: formData.tags,
+        is_public: formData.is_public,
+        userId,
       });
 
-      const result = await createPostAction({
-        title: data.title,
-        content: content,
-        category: data.category,
-        type: data.type,
-        tags: data.tags,
-        is_public: data.is_public,
-        userId: userId,
-        mediaFiles: mediaFiles,
-        documentFiles: documentFiles,
-      });
+      if (mediaFiles.length > 0 || documentFiles.length > 0) {
+        const uploadPromises = [
+          ...mediaFiles.map(async (file) => {
+            const { fileUrl } = await uploadPostMedia(
+              userId,
+              file,
+              "post-media"
+            );
+            return {
+              file_url: fileUrl,
+              file_name: file.name,
+              file_type: file.type.startsWith("image/") ? "image" : "video",
+              file_size: file.size,
+            };
+          }),
+          ...documentFiles.map(async (file) => {
+            const { fileUrl } = await uploadPostMedia(
+              userId,
+              file,
+              "post-files"
+            );
+            return {
+              file_url: fileUrl,
+              file_name: file.name,
+              file_type: "document",
+              file_size: file.size,
+            };
+          }),
+        ];
 
-      console.log("📊 Server action result:", result);
-
-      if (result.success) {
-        console.log("🎉 Post creation completed successfully!");
-        toast.success(result.message);
-
-        console.log("🔄 Redirecting to home page...");
-        router.push("/");
-        router.refresh();
-        console.log("✅ Redirect initiated");
-      } else {
-        console.error("❌ Server action failed:", result.error);
-        toast.error(
-          result.error || "Erreur lors de la création de la publication"
-        );
+        const uploadedFiles = await Promise.all(uploadPromises);
+        await linkPostMedia(post.id, uploadedFiles);
       }
+
+      toast.success("Publication créée avec succès!");
+      router.push("/");
+      router.refresh();
     } catch (error) {
-      console.error("💥 Error in form submission:", error);
-      console.error("📊 Error details:", {
-        message: error instanceof Error ? error.message : "Unknown error",
-        stack: error instanceof Error ? error.stack : undefined,
-        error,
-      });
+      console.error("Error creating post:", error);
       toast.error("Erreur lors de la création de la publication");
     } finally {
-      console.log("🏁 Finally block - setting loading to false");
       setIsLoading(false);
-      console.log("✅ Loading state reset");
     }
   };
 
@@ -196,7 +190,7 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
               <Label>Catégorie *</Label>
               <Select
                 value={watch("category")}
-                onValueChange={(value: PostCategory) =>
+                onValueChange={(value: CreatePostForm["category"]) =>
                   setValue("category", value)
                 }
               >
@@ -206,7 +200,7 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
                 <SelectContent>
                   {Object.entries(POST_CATEGORIES).map(([key, label]) => (
                     <SelectItem key={key} value={key}>
-                      {label as any}
+                      {String(label)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -217,7 +211,9 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
               <Label>Type de publication *</Label>
               <Select
                 value={watch("type")}
-                onValueChange={(value: PostType) => setValue("type", value)}
+                onValueChange={(value: CreatePostForm["type"]) =>
+                  setValue("type", value)
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -225,7 +221,7 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
                 <SelectContent>
                   {Object.entries(POST_TYPES).map(([key, label]) => (
                     <SelectItem key={key} value={key}>
-                      {label as any}
+                      {String(label)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -303,36 +299,36 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
         </CardContent>
       </Card>
 
-      {/* Media Files */}
+      {/* Media Upload */}
       <Card>
         <CardHeader>
-          <CardTitle>Médias (optionnel)</CardTitle>
+          <CardTitle>Images et vidéos</CardTitle>
         </CardHeader>
         <CardContent>
           <FileUpload
             onFilesChange={setMediaFiles}
-            maxFiles={3}
+            maxFiles={5}
             acceptedTypes={["image/*", "video/*"]}
-            maxSize={50}
-            label="Images et vidéos"
-            description="Maximum 3 fichiers (images ou vidéos), 50MB par fichier"
+            maxSize={10}
+            label="Télécharger des médias"
+            description="Ajoutez des images ou des vidéos à votre publication"
           />
         </CardContent>
       </Card>
 
-      {/* Document Files */}
+      {/* Document Upload */}
       <Card>
         <CardHeader>
-          <CardTitle>Documents (optionnel)</CardTitle>
+          <CardTitle>Documents</CardTitle>
         </CardHeader>
         <CardContent>
           <FileUpload
             onFilesChange={setDocumentFiles}
-            maxFiles={2}
-            acceptedTypes={[".pdf", ".doc", ".docx", ".txt"]}
+            maxFiles={3}
+            acceptedTypes={[".pdf", ".doc", ".docx"]}
             maxSize={10}
-            label="Documents"
-            description="Maximum 2 documents, 10MB par fichier"
+            label="Télécharger des documents"
+            description="Ajoutez des documents à votre publication"
           />
         </CardContent>
       </Card>
@@ -349,7 +345,7 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
         </Button>
         <Button type="submit" disabled={isLoading}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Publier
+          {isLoading ? "Publication en cours..." : "Publier"}
         </Button>
       </div>
     </form>

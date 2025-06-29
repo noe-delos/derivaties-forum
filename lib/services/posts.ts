@@ -1,3 +1,5 @@
+"use server";
+
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import {
@@ -7,6 +9,7 @@ import {
   SearchFilters,
   PaginatedResponse,
 } from "@/lib/types";
+import { getAdminSupabaseClient } from "../supabase/admin";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -21,9 +24,7 @@ export async function fetchPosts({
   filters?: SearchFilters;
   isAuthenticated?: boolean;
 }): Promise<PaginatedResponse<Post>> {
-  const supabase = isAuthenticated
-    ? await createClient()
-    : await createServiceClient();
+  const supabase = getAdminSupabaseClient();
 
   const startIndex = pageParam * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE - 1;

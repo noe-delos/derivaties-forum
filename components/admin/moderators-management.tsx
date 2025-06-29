@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, react/no-unescaped-entities */
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -52,7 +52,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { fetchAllUsers, updateUserRole } from "@/lib/services/admin";
 import { useSupabase } from "@/hooks/use-supabase";
 import { useAuth } from "@/hooks/use-auth";
-import { UserRole, USER_ROLES } from "@/lib/types";
+import { UserRole, USER_ROLES, User as UserType } from "@/lib/types";
 import { getUserDisplayName, getUserInitials } from "@/lib/utils";
 
 interface PromoteDemoteDialogProps {
@@ -145,8 +145,54 @@ function PromoteDemoteDialog({
 export function ModeratorsManagement() {
   const supabase = useSupabase();
   const queryClient = useQueryClient();
-  const { profile: currentUser } = useAuth();
+  const { supabase: authSupabase } = useAuth();
+  const [currentUser, setCurrentUser] = useState<UserType | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const {
+          data: { session },
+        } = await authSupabase.auth.getSession();
+
+        if (session?.user) {
+          // Fetch user profile
+          const { data } = await authSupabase
+            .from("users")
+            .select("*")
+            .eq("id", session.user.id)
+            .single();
+
+          setCurrentUser(data as UserType);
+        }
+      } catch (error) {
+        console.error("Error fetching current user:", error);
+      }
+    };
+
+    fetchCurrentUser();
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = authSupabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session?.user) {
+        const { data } = await authSupabase
+          .from("users")
+          .select("*")
+          .eq("id", session.user.id)
+          .single();
+        setCurrentUser(data as UserType);
+      } else if (event === "SIGNED_OUT") {
+        setCurrentUser(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [authSupabase]);
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["admin-users"],

@@ -490,4 +490,27 @@ CREATE INDEX idx_votes_post_id ON public.votes(post_id);
 CREATE INDEX idx_votes_comment_id ON public.votes(comment_id);
 CREATE INDEX idx_votes_user_id ON public.votes(user_id);
 CREATE INDEX idx_notifications_user_id ON public.notifications(user_id);
-CREATE INDEX idx_post_media_post_id ON public.post_media(post_id); 
+CREATE INDEX idx_post_media_post_id ON public.post_media(post_id);
+
+-- Add these statements at the end of the file to properly configure service role bypass
+ALTER TABLE public.users ALTER COLUMN email DROP NOT NULL;
+
+-- Grant proper permissions to the service role
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO service_role;
+
+-- Explicitly allow service_role to bypass RLS
+ALTER TABLE public.users FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.posts FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.post_media FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.comments FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.votes FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.notifications FORCE ROW LEVEL SECURITY;
+
+-- Add security definer to functions that need to bypass RLS
+ALTER FUNCTION public.handle_new_user() SECURITY DEFINER;
+ALTER FUNCTION public.update_post_vote_counts() SECURITY DEFINER;
+ALTER FUNCTION public.update_comment_vote_counts() SECURITY DEFINER;
+ALTER FUNCTION public.update_post_comments_count() SECURITY DEFINER;
+ALTER FUNCTION public.award_tokens_for_approved_post() SECURITY DEFINER; 

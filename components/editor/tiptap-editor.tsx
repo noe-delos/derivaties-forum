@@ -57,7 +57,12 @@ export function TiptapEditor({
     ],
     content,
     onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
+      const newContent = editor.getHTML();
+      console.log("TiptapEditor: Content updated", {
+        length: newContent.length,
+        preview: newContent.substring(0, 50) + "...",
+      });
+      onChange(newContent);
     },
   });
 

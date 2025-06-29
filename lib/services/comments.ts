@@ -1,26 +1,25 @@
+"use server";
 /* eslint-disable prefer-const */
 import { createClient } from "@/lib/supabase/server";
-import { createServiceClient } from "@/lib/supabase/server";
 import { Comment, PaginatedResponse } from "@/lib/types";
+import { getAdminSupabaseClient } from "../supabase/admin";
 
 const ITEMS_PER_PAGE = 20;
 
 export async function fetchComments({
   postId,
   pageParam = 0,
-  isAuthenticated = false,
 }: {
   postId: string;
   pageParam?: number;
   isAuthenticated?: boolean;
 }): Promise<PaginatedResponse<Comment>> {
-  const supabase = isAuthenticated
-    ? await createClient()
-    : await createServiceClient();
+  const supabase = getAdminSupabaseClient();
 
   const startIndex = pageParam * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE - 1;
 
+  // First, fetch the main comments (without parent_id)
   let query = supabase
     .from("comments")
     .select(
@@ -34,19 +33,7 @@ export async function fetchComments({
         profile_picture_url,
         role
       ),
-      user_vote:votes!votes_comment_id_fkey(vote_type),
-      replies:comments!comments_parent_id_fkey(
-        *,
-        user:users!comments_user_id_fkey(
-          id,
-          first_name,
-          last_name,
-          username,
-          profile_picture_url,
-          role
-        ),
-        user_vote:votes!votes_comment_id_fkey(vote_type)
-      )
+      user_vote:votes!votes_comment_id_fkey(vote_type)
     `,
       { count: "exact" }
     )
@@ -61,8 +48,54 @@ export async function fetchComments({
     throw new Error(error.message);
   }
 
+  // If we have comments, fetch their replies separately
+  let commentsWithReplies = comments || [];
+
+  if (comments && comments.length > 0) {
+    const commentIds = comments.map((comment) => comment.id);
+
+    // Fetch replies for all comments
+    const { data: replies, error: repliesError } = await supabase
+      .from("comments")
+      .select(
+        `
+        *,
+        user:users!comments_user_id_fkey(
+          id,
+          first_name,
+          last_name,
+          username,
+          profile_picture_url,
+          role
+        ),
+        user_vote:votes!votes_comment_id_fkey(vote_type)
+      `
+      )
+      .in("parent_id", commentIds)
+      .order("created_at", { ascending: true });
+
+    if (repliesError) {
+      console.error("Error fetching replies:", repliesError);
+    } else {
+      // Group replies by parent_id
+      const repliesByParent = (replies || []).reduce((acc, reply) => {
+        if (!acc[reply.parent_id]) {
+          acc[reply.parent_id] = [];
+        }
+        acc[reply.parent_id].push(reply);
+        return acc;
+      }, {} as Record<string, Comment[]>);
+
+      // Add replies to their parent comments
+      commentsWithReplies = comments.map((comment) => ({
+        ...comment,
+        replies: repliesByParent[comment.id] || [],
+      }));
+    }
+  }
+
   // Serialize the data for safe client transfer
-  const serializedData = JSON.parse(JSON.stringify(comments || []));
+  const serializedData = JSON.parse(JSON.stringify(commentsWithReplies));
 
   return {
     data: serializedData,
@@ -80,19 +113,33 @@ export async function createComment(commentData: {
   content: string;
   user_id: string;
 }) {
+  console.log("createComment service called with:", {
+    ...commentData,
+    content: commentData.content.substring(0, 50) + "...",
+  });
+
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("comments")
-    .insert(commentData)
-    .select()
-    .single();
+  try {
+    console.log("createComment: Inserting comment into database...");
 
-  if (error) {
-    throw new Error(error.message);
+    const { data, error } = await supabase
+      .from("comments")
+      .insert(commentData)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("createComment: Database error:", error);
+      throw new Error(error.message);
+    }
+
+    console.log("createComment: Comment created successfully:", data?.id);
+    return JSON.parse(JSON.stringify(data));
+  } catch (error) {
+    console.error("createComment: Service error:", error);
+    throw error;
   }
-
-  return JSON.parse(JSON.stringify(data));
 }
 
 export async function voteComment(

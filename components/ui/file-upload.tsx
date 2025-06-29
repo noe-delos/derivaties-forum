@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/exhaustive-deps, jsx-a11y/alt-text, @next/next/no-img-element */
+/* eslint-disable react-hooks/exhaustive-deps, jsx-a11y/alt-text */
 "use client";
 
 import React, { useCallback, useState, useEffect } from "react";
@@ -100,8 +100,6 @@ export function FileUpload({
   };
 
   const isImageFile = (file: File) => file.type.startsWith("image/");
-  const imageFiles = files.filter(isImageFile);
-  const otherFiles = files.filter((file) => !isImageFile(file));
 
   return (
     <div className="space-y-4">
@@ -141,16 +139,15 @@ export function FileUpload({
       </Card>
 
       {/* Image Previews Grid */}
-      {imageFiles.length > 0 && (
+      {files.filter(isImageFile).length > 0 && (
         <div className="space-y-2">
           <h4 className="text-sm font-medium">Aperçu des images</h4>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {imageFiles.map((file, index) => (
+            {files.filter(isImageFile).map((file, index) => (
               <div key={index} className="relative group">
                 <div className="aspect-square rounded-lg overflow-hidden bg-muted">
                   <img
                     src={file.preview}
-                    alt={file.name}
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -176,34 +173,36 @@ export function FileUpload({
       )}
 
       {/* Other Files List */}
-      {otherFiles.length > 0 && (
+      {files.filter((file) => !isImageFile(file)).length > 0 && (
         <div className="space-y-2">
           <h4 className="text-sm font-medium">Autres fichiers</h4>
           <div className="space-y-2">
-            {otherFiles.map((file, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between p-3 bg-muted rounded-lg"
-              >
-                <div className="flex items-center gap-3">
-                  {getFileIcon(file)}
-                  <div>
-                    <p className="text-sm font-medium">{file.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatFileSize(file.size)}
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeFile(files.indexOf(file))}
+            {files
+              .filter((file) => !isImageFile(file))
+              .map((file, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-3 bg-muted rounded-lg"
                 >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
+                  <div className="flex items-center gap-3">
+                    {getFileIcon(file)}
+                    <div>
+                      <p className="text-sm font-medium">{file.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatFileSize(file.size)}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeFile(files.indexOf(file))}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
           </div>
         </div>
       )}

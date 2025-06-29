@@ -17,17 +17,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
+import { User as UserType } from "@/lib/types";
+import { useSupabase } from "@/hooks/use-supabase";
 
 interface HeaderProps {
   onSearch?: (query: string) => void;
+  isAuthenticated: boolean;
+  profile: UserType | null;
 }
 
-export function Header({ onSearch }: HeaderProps) {
+export function Header({ onSearch, isAuthenticated, profile }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const { profile, isAuthenticated, signOut } = useAuth();
+  const supabase = useSupabase();
   const router = useRouter();
 
   const handleSearch = (e: React.FormEvent) => {
@@ -44,9 +46,11 @@ export function Header({ onSearch }: HeaderProps) {
   const handleSignOut = async () => {
     try {
       toast.loading("Déconnexion en cours...");
-      await signOut();
+      await supabase.auth.signOut();
       toast.dismiss();
       toast.success("Déconnexion réussie !");
+      router.push("/");
+      router.refresh(); // Refresh to update server state
     } catch (error) {
       console.error("Error during logout:", error);
       toast.dismiss();
@@ -65,14 +69,10 @@ export function Header({ onSearch }: HeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b border-muted bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center gap-4">
-        <div className="flex items-center gap-2">
-          <SidebarTrigger />
-        </div>
-
         {/* Search Bar */}
-        <div className="flex-1 max-w-2xl">
+        <div className="flex-1 max-w-2xl ml-12">
           <form onSubmit={handleSearch} className="relative">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input

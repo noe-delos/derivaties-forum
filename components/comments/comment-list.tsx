@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInView } from "react-intersection-observer";
 import { Loader2, MessageCircle } from "lucide-react";
 
 import { CommentCard } from "./comment-card";
@@ -11,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { fetchComments } from "@/lib/services/comments";
 import { useAuth } from "@/hooks/use-auth";
-import { Comment } from "@/lib/types";
+import { Comment, User as UserType } from "@/lib/types";
 
 interface CommentListProps {
   postId: string;
@@ -19,7 +20,10 @@ interface CommentListProps {
 }
 
 export function CommentList({ postId, className }: CommentListProps) {
-  const { isAuthenticated } = useAuth();
+  const [profile, setProfile] = useState<UserType | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { supabase } = useAuth();
+  const { ref, inView } = useInView();
   const [showCommentForm, setShowCommentForm] = useState(false);
 
   const {
@@ -42,6 +46,59 @@ export function CommentList({ postId, className }: CommentListProps) {
   });
 
   const comments = data?.pages.flatMap((page) => page.data) ?? [];
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        console.log("session", session);
+        if (session?.user) {
+          setIsAuthenticated(true);
+
+          // Fetch user profile
+          const { data } = await supabase
+            .from("users")
+            .select("*")
+            .eq("id", session.user.id)
+            .single();
+
+          setProfile(data as UserType);
+        } else {
+          setIsAuthenticated(false);
+          setProfile(null);
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    };
+
+    fetchUserData();
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" && session?.user) {
+        setIsAuthenticated(true);
+        const { data } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", session.user.id)
+          .single();
+        setProfile(data as UserType);
+      } else if (event === "SIGNED_OUT") {
+        setIsAuthenticated(false);
+        setProfile(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   if (isLoading) {
     return (

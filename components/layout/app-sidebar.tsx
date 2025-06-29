@@ -1,23 +1,11 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import * as React from "react";
-import { usePathname } from "next/navigation";
+import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import {
-  ChevronDown,
-  Home,
-  TrendingUp,
-  Coins,
-  Users,
-  BookOpen,
-  Target,
-  Building2,
-  PanelLeftClose,
-  PanelLeftOpen,
-} from "lucide-react";
+import { usePathname } from "next/navigation";
+import { Icon } from "@iconify/react";
 
 import {
   Sidebar,
@@ -26,44 +14,88 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
-  SidebarHeader,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/use-auth";
-import { POST_CATEGORIES } from "@/lib/types";
-import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { User as UserType } from "@/lib/types";
+
+interface AppSidebarProps {
+  isAuthenticated: boolean;
+  profile: UserType | null;
+}
 
 const navigationItems = [
   {
-    title: "Feed",
+    title: "Accueil",
     url: "/",
-    icon: Home,
+    icon: "mage:home-fill",
   },
   {
-    title: "Populaire",
+    title: "Tendances",
     url: "/populaire",
-    icon: TrendingUp,
+    icon: "fluent:fire-24-filled",
   },
 ];
 
-const categoryIcons = {
-  entretien_sales_trading: Building2,
-  conseils_ecole: BookOpen,
-  stage_summer_graduate: Users,
-  quant_hedge_funds: Target,
-};
+const adminItems = [
+  {
+    title: "Analytics",
+    url: "/admin/analytics",
+    icon: "mdi-light:chart-line",
+  },
+  {
+    title: "Posts",
+    url: "/admin/posts",
+    icon: "mdi-light:file-document",
+  },
+  {
+    title: "Comments",
+    url: "/admin/comments",
+    icon: "mdi-light:comment",
+  },
+  {
+    title: "Users",
+    url: "/admin/users",
+    icon: "mdi-light:account-group",
+  },
+  {
+    title: "Mods",
+    url: "/admin/moderators",
+    icon: "mdi-light:shield-account",
+  },
+];
 
-export function AppSidebar() {
+const categoryItems = [
+  {
+    title: "Entretiens S&T",
+    key: "entretien_sales_trading",
+    icon: "stash:headset-solid",
+  },
+  {
+    title: "École",
+    key: "conseils_ecole",
+    icon: "map:university",
+  },
+  {
+    title: "Stages",
+    key: "stage_summer_graduate",
+    icon: "material-symbols:badge-rounded",
+  },
+  {
+    title: "Quant & HF",
+    key: "quant_hedge_funds",
+    icon: "tabler:math-max",
+  },
+];
+
+export function AppSidebar({ isAuthenticated, profile }: AppSidebarProps) {
   const pathname = usePathname();
-  const { profile, isAuthenticated } = useAuth();
   const { state, toggleSidebar } = useSidebar();
   const [isHovered, setIsHovered] = React.useState(false);
 
@@ -102,7 +134,7 @@ export function AppSidebar() {
                   isHovered && "opacity-100"
                 )}
               >
-                <PanelLeftClose className="h-4 w-4" />
+                <Icon icon="mdi-light:chevron-left" className="h-4 w-4" />
               </Button>
             )}
           </Link>
@@ -118,7 +150,7 @@ export function AppSidebar() {
                 "flex items-center justify-center"
               )}
             >
-              <PanelLeftOpen className="h-4 w-4" />
+              <Icon icon="mdi-light:chevron-right" className="h-4 w-4" />
             </Button>
           )}
         </div>
@@ -126,14 +158,23 @@ export function AppSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-muted-foreground/80">
+            Navigation
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={pathname === item.url}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === item.url}
+                    className="px-6 py-3"
+                  >
                     <Link href={item.url}>
-                      <item.icon />
+                      <Icon
+                        icon={item.icon}
+                        className="size-7 text-foreground/50"
+                      />
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
@@ -144,19 +185,29 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Catégories</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-muted-foreground/80">
+            Catégories
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {Object.entries(POST_CATEGORIES).map(([key, label]) => {
-                const Icon = categoryIcons[key as keyof typeof categoryIcons];
-                const isActive = pathname === `/categories/${key}`;
+              {categoryItems.map((item) => {
+                const isActive = pathname === `/categories/${item.key}`;
 
                 return (
-                  <SidebarMenuItem key={key}>
-                    <SidebarMenuButton asChild isActive={isActive}>
-                      <Link href={`/categories/${key}`}>
-                        <Icon />
-                        <span>{label as any}</span>
+                  <SidebarMenuItem key={item.key}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      className="px-6"
+                    >
+                      <Link href={`/categories/${item.key}`}>
+                        <Icon
+                          icon={item.icon}
+                          className="size-10 text-foreground/50"
+                        />
+                        <span className="font-medium text-foreground">
+                          {item.title}
+                        </span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -172,7 +223,10 @@ export function AppSidebar() {
           <SidebarGroup>
             <SidebarGroupContent>
               <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                <Coins className="h-5 w-5 text-amber-500" />
+                <Icon
+                  icon="mdi-light:coin"
+                  className="h-5 w-5 text-amber-500"
+                />
                 <div className="flex flex-col min-w-0">
                   <span className="text-sm font-medium">Mes tokens</span>
                   <Badge variant="secondary" className="w-fit">

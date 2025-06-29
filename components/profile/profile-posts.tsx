@@ -1,24 +1,93 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
+import { useEffect, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInView } from "react-intersection-observer";
 import { Loader2, FileText, MessageCircle, ThumbsUp } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PostCard } from "@/components/posts/post-card";
+import { PostSkeleton } from "../posts/post-skeleton";
 import { fetchUserPosts } from "@/lib/services/profile";
 import { useAuth } from "@/hooks/use-auth";
 import { Post } from "@/lib/types";
 
 interface ProfilePostsProps {
   userId: string;
-  initialPosts?: Post[];
+  showAll?: boolean;
+  className?: string;
 }
 
-export function ProfilePosts({ userId, initialPosts = [] }: ProfilePostsProps) {
-  const { isAuthenticated } = useAuth();
+export function ProfilePosts({
+  userId,
+  showAll = false,
+  className,
+}: ProfilePostsProps) {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [profile, setProfile] = useState(null);
+  const { supabase } = useAuth();
+  const { ref, inView } = useInView({
+    threshold: 0,
+    rootMargin: "100px",
+  });
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session?.user) {
+          setIsAuthenticated(true);
+
+          // Fetch user profile
+          const { data } = await supabase
+            .from("users")
+            .select("*")
+            .eq("id", session.user.id)
+            .single();
+
+          setProfile(data);
+        } else {
+          setIsAuthenticated(false);
+          setProfile(null);
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    };
+
+    fetchUserData();
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        setIsAuthenticated(true);
+
+        // Fetch user profile
+        const { data } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", session.user.id)
+          .single();
+
+        setProfile(data);
+      } else {
+        setIsAuthenticated(false);
+        setProfile(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   const {
     data,
@@ -46,7 +115,7 @@ export function ProfilePosts({ userId, initialPosts = [] }: ProfilePostsProps) {
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  const posts = data?.pages.flatMap((page) => page.data) || initialPosts;
+  const posts = data?.pages.flatMap((page) => page.data) || [];
   const totalCount = data?.pages[0]?.count || 0;
 
   console.log("📊 ProfilePosts state:", {
@@ -163,6 +232,8 @@ export function ProfilePosts({ userId, initialPosts = [] }: ProfilePostsProps) {
               isBlurred={!isAuthenticated && !post.is_public}
               showActions={isAuthenticated}
               className="transform scale-95"
+              isAuthenticated={isAuthenticated}
+              profile={profile}
             />
           </motion.div>
         ))}

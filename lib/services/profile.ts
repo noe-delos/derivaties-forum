@@ -1,6 +1,9 @@
+"use server";
+
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { User, Post, PaginatedResponse } from "@/lib/types";
+import { getAdminSupabaseClient } from "../supabase/admin";
 
 export interface UserProfileStats {
   postsCount: number;
@@ -21,9 +24,7 @@ export async function fetchUserProfile(
   userId: string,
   isAuthenticated = false
 ): Promise<UserProfile> {
-  const supabase = isAuthenticated
-    ? await createClient()
-    : await createServiceClient();
+  const supabase = getAdminSupabaseClient();
 
   // Fetch user basic info
   const { data: user, error: userError } = await supabase

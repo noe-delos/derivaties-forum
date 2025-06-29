@@ -3,7 +3,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
@@ -14,6 +13,7 @@ import {
   MoreHorizontal,
   Eye,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import {
   Card,
@@ -31,8 +31,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { Post, POST_CATEGORIES, POST_TYPES } from "@/lib/types";
-import { useAuth } from "@/hooks/use-auth";
+import {
+  Post,
+  POST_CATEGORIES,
+  POST_TYPES,
+  User as UserType,
+} from "@/lib/types";
+import { votePost } from "@/lib/services/posts";
 
 interface PostCardProps {
   post: Post;
@@ -40,6 +45,8 @@ interface PostCardProps {
   showActions?: boolean;
   expanded?: boolean;
   className?: string;
+  isAuthenticated?: boolean;
+  profile?: UserType | null;
 }
 
 export function PostCard({
@@ -48,8 +55,9 @@ export function PostCard({
   showActions = true,
   expanded = false,
   className,
+  isAuthenticated = false,
+  profile = null,
 }: PostCardProps) {
-  const { isAuthenticated, profile } = useAuth();
   const [isVoting, setIsVoting] = useState(false);
 
   const getUserInitials = (user: any) => {
@@ -73,14 +81,22 @@ export function PostCard({
   };
 
   const handleVote = async (voteType: 1 | -1) => {
-    if (!isAuthenticated || !profile) return;
+    if (!isAuthenticated || !profile) {
+      toast.error("Vous devez être connecté pour voter");
+      return;
+    }
 
-    setIsVoting(true);
     try {
-      // TODO: Implement vote mutation
-      console.log("Vote:", voteType, "on post:", post.id);
+      setIsVoting(true);
+      await votePost(post.id, voteType, profile.id);
+      toast.success("Vote enregistré!");
+
+      // Optionally refresh the page or update the post data
+      // For now, we'll just show success message
+      // In a real app, you'd want to update the post data in the query cache
     } catch (error) {
       console.error("Error voting:", error);
+      toast.error("Erreur lors du vote");
     } finally {
       setIsVoting(false);
     }
@@ -101,6 +117,7 @@ export function PostCard({
       await navigator.clipboard.writeText(
         `${window.location.origin}/post/${post.id}`
       );
+      toast.success("Lien copié dans le presse-papiers!");
     }
   };
 
@@ -109,6 +126,8 @@ export function PostCard({
     : post.content.length > 200
     ? post.content.substring(0, 200) + "..."
     : post.content;
+
+  const userVote = post.user_vote?.vote_type;
 
   return (
     <Card className={cn("w-full", className)}>
@@ -214,22 +233,181 @@ export function PostCard({
 
           {/* Media Gallery */}
           {post.media && post.media.length > 0 && (
-            <div className="grid gap-2">
-              {post.media[0].file_type === "image" && (
-                <div className="relative aspect-video rounded-lg overflow-hidden">
-                  <Image
-                    src={post.media[0].file_url}
-                    alt="Post media"
-                    fill
-                    className="object-cover"
-                  />
-                  {post.media.length > 1 && (
-                    <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
-                      +{post.media.length - 1}
+            <div className="space-y-4">
+              {/* Images */}
+              {(() => {
+                const images = post.media.filter(
+                  (m) => m.file_type === "image"
+                );
+
+                if (images.length === 0) return null;
+
+                if (images.length === 1) {
+                  return (
+                    <div className="relative aspect-video rounded-lg overflow-hidden">
+                      <img
+                        src={images[0].file_url}
+                        alt="Post media"
+                        className="object-cover w-full h-full"
+                      />
                     </div>
-                  )}
-                </div>
-              )}
+                  );
+                }
+
+                if (images.length === 2) {
+                  return (
+                    <div className="grid grid-cols-2 gap-2">
+                      {images.map((image, index) => (
+                        <div
+                          key={index}
+                          className="relative aspect-video rounded-lg overflow-hidden"
+                        >
+                          <img
+                            src={image.file_url}
+                            alt={`Post media ${index + 1}`}
+                            className="object-cover w-full h-full"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  );
+                }
+
+                if (images.length === 3) {
+                  return (
+                    <div className="grid grid-cols-2 gap-2 h-80">
+                      <div className="relative rounded-lg overflow-hidden">
+                        <img
+                          src={images[0].file_url}
+                          alt="Post media 1"
+                          className="object-cover w-full h-full"
+                        />
+                      </div>
+                      <div className="grid grid-rows-2 gap-2">
+                        {images.slice(1).map((image, index) => (
+                          <div
+                            key={index + 1}
+                            className="relative rounded-lg overflow-hidden"
+                          >
+                            <img
+                              src={image.file_url}
+                              alt={`Post media ${index + 2}`}
+                              className="object-cover w-full h-full"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // 4 or more images
+                return (
+                  <div className="grid grid-cols-2 gap-2 h-80">
+                    <div className="relative rounded-lg overflow-hidden">
+                      <img
+                        src={images[0].file_url}
+                        alt="Post media 1"
+                        className="object-cover w-full h-full"
+                      />
+                    </div>
+                    <div className="grid grid-rows-2 gap-2">
+                      {images.slice(1, 3).map((image, index) => (
+                        <div
+                          key={index + 1}
+                          className="relative rounded-lg overflow-hidden"
+                        >
+                          <img
+                            src={image.file_url}
+                            alt={`Post media ${index + 2}`}
+                            className="object-cover w-full h-full"
+                          />
+                        </div>
+                      ))}
+                      {images.length > 3 && (
+                        <div className="relative rounded-lg overflow-hidden bg-black/50">
+                          <img
+                            src={images[3].file_url}
+                            alt="Post media 4"
+                            className="object-cover w-full h-full opacity-60"
+                          />
+                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                            <span className="text-white text-lg font-semibold">
+                              +{images.length - 3}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Files */}
+              {(() => {
+                const files = post.media.filter(
+                  (m) => m.file_type === "document"
+                );
+                if (files.length === 0) return null;
+
+                return (
+                  <div className="border rounded-lg p-4 bg-muted/20">
+                    <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                      <svg
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                      </svg>
+                      Fichiers joints ({files.length})
+                    </h4>
+                    <div className="space-y-2">
+                      {files.map((file, index) => (
+                        <a
+                          key={index}
+                          href={file.file_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                        >
+                          <div className="flex-shrink-0 w-8 h-8 bg-primary/10 rounded flex items-center justify-center">
+                            <svg
+                              className="h-4 w-4 text-primary"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                              />
+                            </svg>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {file.file_name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {file.file_size
+                                ? `${Math.round(file.file_size / 1024)} KB`
+                                : "Fichier"}
+                            </p>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -269,9 +447,13 @@ export function PostCard({
                   disabled={!isAuthenticated || isVoting}
                   className={cn(
                     "h-8 w-8 p-0",
-                    post.user_vote?.vote_type === 1 &&
-                      "text-green-600 bg-green-50"
+                    userVote === 1 && "text-green-600 bg-green-50"
                   )}
+                  title={
+                    !isAuthenticated
+                      ? "Connectez-vous pour voter"
+                      : "Voter pour"
+                  }
                 >
                   <ChevronUp className="h-4 w-4" />
                 </Button>
@@ -285,8 +467,13 @@ export function PostCard({
                   disabled={!isAuthenticated || isVoting}
                   className={cn(
                     "h-8 w-8 p-0",
-                    post.user_vote?.vote_type === -1 && "text-red-600 bg-red-50"
+                    userVote === -1 && "text-red-600 bg-red-50"
                   )}
+                  title={
+                    !isAuthenticated
+                      ? "Connectez-vous pour voter"
+                      : "Voter contre"
+                  }
                 >
                   <ChevronDown className="h-4 w-4" />
                 </Button>
