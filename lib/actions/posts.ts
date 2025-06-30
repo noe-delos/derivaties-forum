@@ -7,6 +7,7 @@ import { createPost, addPostMedia } from "@/lib/services/posts";
 import { PostCategory, PostType } from "@/lib/types";
 import type { UploadResult } from "@/lib/services/uploadService";
 import { createServiceClient } from "@/lib/supabase/server";
+import { getAdminSupabaseClient } from "../supabase/admin";
 
 interface CreatePostData {
   title: string;
@@ -128,7 +129,7 @@ export async function createPostAction(data: CreatePostData) {
 }
 
 export async function createPostServer(data: CreatePostData) {
-  const supabase = await createServiceClient();
+  const supabase = getAdminSupabaseClient();
 
   try {
     // Create the post
