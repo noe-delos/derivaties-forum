@@ -48,7 +48,7 @@ import {
   PostCategory,
   PostType,
 } from "@/lib/types";
-import { useSupabase } from "@/hooks/use-supabase";
+import { signOutAction } from "@/lib/actions/auth";
 
 interface HeaderProps {
   isAuthenticated: boolean;
@@ -75,7 +75,6 @@ export function Header({
   const [showFilters, setShowFilters] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
-  const supabase = useSupabase();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -199,11 +198,19 @@ export function Header({
   const handleSignOut = async () => {
     try {
       toast.loading("Déconnexion en cours...");
-      await supabase.auth.signOut();
+
+      // Use server action for signout
+      const result = await signOutAction();
+
       toast.dismiss();
-      toast.success("Déconnexion réussie !");
-      router.push("/");
-      router.refresh();
+
+      if (result.success) {
+        toast.success(result.message || "Déconnexion réussie !");
+        router.push("/");
+        router.refresh();
+      } else {
+        toast.error(result.error || "Erreur lors de la déconnexion");
+      }
     } catch (error) {
       console.error("Error during logout:", error);
       toast.dismiss();
