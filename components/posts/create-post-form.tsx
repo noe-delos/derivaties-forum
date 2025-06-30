@@ -155,7 +155,7 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
         await linkPostMedia(post.id, uploadedFiles);
       }
 
-      toast.success("Publication créée avec succès!");
+      toast.info("Publication envoyé pour vérification !");
       router.push("/");
       router.refresh();
     } catch (error) {
