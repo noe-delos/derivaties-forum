@@ -47,8 +47,10 @@ import {
   POST_TYPES,
   PostCategory,
   PostType,
+  Bank,
 } from "@/lib/types";
 import { signOutAction } from "@/lib/actions/auth";
+import { fetchBanks } from "@/lib/services/banks";
 
 interface HeaderProps {
   isAuthenticated: boolean;
@@ -74,9 +76,26 @@ export function Header({
   const [isNaturalLanguage, setIsNaturalLanguage] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [banks, setBanks] = useState<Bank[]>([]);
+  const [banksLoading, setBanksLoading] = useState(true);
 
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  // Fetch banks on component mount
+  useEffect(() => {
+    async function loadBanks() {
+      try {
+        const banksData = await fetchBanks();
+        setBanks(banksData);
+      } catch (error) {
+        console.error("Error loading banks:", error);
+      } finally {
+        setBanksLoading(false);
+      }
+    }
+    loadBanks();
+  }, []);
 
   // Initialize from URL params
   useEffect(() => {
@@ -85,6 +104,7 @@ export function Header({
     const type = searchParams.get("type");
     const sort = searchParams.get("sort") || "recent";
     const nl = searchParams.get("nl") === "true";
+    const banksParam = searchParams.get("banks");
 
     setSearchQuery(query);
     setFilters({
@@ -96,6 +116,7 @@ export function Header({
         type && Object.keys(POST_TYPES).includes(type)
           ? (type as PostType)
           : undefined,
+      banks: banksParam ? banksParam.split(",") : undefined,
       sortBy: sort as "recent" | "popular" | "comments",
     });
     setIsNaturalLanguage(nl);
@@ -117,6 +138,8 @@ export function Header({
     if (searchQuery.trim()) params.set("q", searchQuery.trim());
     if (filters.category) params.set("category", filters.category);
     if (filters.type) params.set("type", filters.type);
+    if (filters.banks && filters.banks.length > 0)
+      params.set("banks", filters.banks.join(","));
     if (filters.sortBy && filters.sortBy !== "recent")
       params.set("sort", filters.sortBy);
     if (isNaturalLanguage) params.set("nl", "true");
@@ -189,11 +212,38 @@ export function Header({
     handleFilterChange(newFilters);
   };
 
+  const addBankFilter = (bankId: string) => {
+    const currentBanks = filters.banks || [];
+    if (!currentBanks.includes(bankId)) {
+      const newFilters = { ...filters, banks: [...currentBanks, bankId] };
+      handleFilterChange(newFilters);
+    }
+  };
+
+  const removeBankFilter = (bankId: string) => {
+    const currentBanks = filters.banks || [];
+    const newFilters = {
+      ...filters,
+      banks: currentBanks.filter((id) => id !== bankId),
+    };
+    handleFilterChange(newFilters);
+  };
+
   const hasActiveFilters =
     Object.keys(filters).some((key) => {
       const value = filters[key as keyof SearchFilters];
       return Array.isArray(value) ? value.length > 0 : !!value;
     }) || searchQuery.trim();
+
+  const getBankName = (bankId: string) => {
+    const bank = banks.find((b) => b.id === bankId);
+    return bank?.name || bankId;
+  };
+
+  const getBankLogo = (bankId: string) => {
+    const bank = banks.find((b) => b.id === bankId);
+    return bank?.logo_url;
+  };
 
   const handleSignOut = async () => {
     try {
@@ -514,6 +564,74 @@ export function Header({
                         )}
                       </div>
                     </div>
+                  </div>
+
+                  {/* Banks Section */}
+                  <div className="mt-3 pt-3 border-t">
+                    <Label className="text-xs text-muted-foreground">
+                      Banques sélectionnées:
+                    </Label>
+                    <div className="flex flex-wrap gap-1 mt-2 mb-3">
+                      {(filters.banks || []).length > 0 ? (
+                        (filters.banks || []).map((bankId) => {
+                          const logoUrl = getBankLogo(bankId);
+                          return (
+                            <Badge
+                              key={bankId}
+                              variant="secondary"
+                              className="cursor-pointer hover:bg-destructive hover:text-destructive-foreground text-xs h-6 gap-1"
+                              onClick={() => removeBankFilter(bankId)}
+                            >
+                              {logoUrl && (
+                                <div className="w-3 h-3 relative">
+                                  <img
+                                    src={logoUrl}
+                                    alt=""
+                                    className="object-contain rounded"
+                                  />
+                                </div>
+                              )}
+                              {getBankName(bankId)}
+                              <X className="h-2 w-2" />
+                            </Badge>
+                          );
+                        })
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          Aucune banque sélectionnée
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Available Banks */}
+                    {!banksLoading && banks.length > 0 && (
+                      <>
+                        <Label className="text-xs text-muted-foreground">
+                          Banques disponibles:
+                        </Label>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {banks
+                            .filter((bank) => !filters.banks?.includes(bank.id))
+                            .map((bank) => (
+                              <Badge
+                                key={bank.id}
+                                variant="outline"
+                                className="cursor-pointer hover:bg-primary hover:text-primary-foreground text-xs h-6 gap-1"
+                                onClick={() => addBankFilter(bank.id)}
+                              >
+                                <div className="w-3 h-3 relative">
+                                  <img
+                                    src={bank.logo_url}
+                                    alt={bank.name}
+                                    className="object-contain rounded"
+                                  />
+                                </div>
+                                {bank.name}
+                              </Badge>
+                            ))}
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* Popular Tags */}

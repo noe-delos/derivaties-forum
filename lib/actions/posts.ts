@@ -14,6 +14,7 @@ interface CreatePostData {
   content: string;
   category: PostCategory;
   type: PostType;
+  bank_id: string;
   tags: string[];
   is_public: boolean;
   userId: string;
@@ -93,6 +94,7 @@ export async function createPostAction(data: CreatePostData) {
       content: data.content,
       category: data.category,
       type: data.type,
+      bank_id: data.bank_id,
       tags: data.tags,
       is_public: data.is_public,
       user_id: data.userId,
@@ -140,6 +142,7 @@ export async function createPostServer(data: CreatePostData) {
         content: data.content,
         category: data.category,
         type: data.type,
+        bank_id: data.bank_id,
         tags: data.tags,
         is_public: data.is_public,
         user_id: data.userId,

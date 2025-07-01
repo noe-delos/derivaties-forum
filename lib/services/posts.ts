@@ -42,6 +42,11 @@ export async function fetchPosts({
         profile_picture_url,
         role
       ),
+      bank:banks!posts_bank_id_fkey(
+        id,
+        name,
+        logo_url
+      ),
       media:post_media(*),
       user_vote:votes!votes_post_id_fkey(vote_type)
     `,
@@ -73,6 +78,9 @@ export async function fetchPosts({
   if (filters) {
     if (filters.type) {
       query = query.eq("type", filters.type);
+    }
+    if (filters.banks && filters.banks.length > 0) {
+      query = query.in("bank_id", filters.banks);
     }
     if (filters.tags && filters.tags.length > 0) {
       query = query.overlaps("tags", filters.tags);
@@ -128,6 +136,11 @@ export async function fetchPost(
         profile_picture_url,
         role
       ),
+      bank:banks!posts_bank_id_fkey(
+        id,
+        name,
+        logo_url
+      ),
       media:post_media(*),
       user_vote:votes!votes_post_id_fkey(vote_type)
     `
@@ -181,6 +194,11 @@ export async function searchPosts({
         profile_picture_url,
         role
       ),
+      bank:banks!posts_bank_id_fkey(
+        id,
+        name,
+        logo_url
+      ),
       media:post_media(*),
       user_vote:votes!votes_post_id_fkey(vote_type)
     `,
@@ -202,6 +220,9 @@ export async function searchPosts({
     }
     if (filters.type) {
       dbQuery = dbQuery.eq("type", filters.type);
+    }
+    if (filters.banks && filters.banks.length > 0) {
+      dbQuery = dbQuery.in("bank_id", filters.banks);
     }
     if (filters.tags && filters.tags.length > 0) {
       dbQuery = dbQuery.overlaps("tags", filters.tags);
@@ -234,6 +255,7 @@ export async function createPost(postData: {
   content: string;
   category: PostCategory;
   type: PostType;
+  bank_id: string;
   tags: string[];
   is_public: boolean;
   user_id: string;

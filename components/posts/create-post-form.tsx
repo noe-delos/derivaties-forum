@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
-import { Loader2, Plus, X } from "lucide-react";
+import { Loader2, Plus, X, Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,12 +23,14 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { TiptapEditor } from "@/components/editor/tiptap-editor";
 import { FileUpload } from "@/components/ui/file-upload";
-import { POST_CATEGORIES, POST_TYPES } from "@/lib/types";
+import { POST_CATEGORIES, POST_TYPES, Bank } from "@/lib/types";
 import {
   createPostServer,
   uploadPostMedia,
   linkPostMedia,
 } from "@/lib/actions/posts";
+import { fetchBanks } from "@/lib/services/banks";
+import { cn } from "@/lib/utils";
 
 const createPostSchema = z.object({
   title: z.string().min(5, "Le titre doit contenir au moins 5 caractères"),
@@ -44,6 +46,7 @@ const createPostSchema = z.object({
     "transcript_entretien",
     "fichier_attache",
   ]),
+  bank_id: z.string().min(1, "Vous devez sélectionner une banque"),
   tags: z.array(z.string()).min(1, "Au moins un tag est requis"),
   is_public: z.boolean(),
 });
@@ -64,6 +67,8 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
   const [tagInput, setTagInput] = useState("");
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [documentFiles, setDocumentFiles] = useState<File[]>([]);
+  const [banks, setBanks] = useState<Bank[]>([]);
+  const [banksLoading, setBanksLoading] = useState(true);
 
   const form = useForm<CreatePostForm>({
     resolver: zodResolver(createPostSchema),
@@ -71,6 +76,7 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
       title: "",
       category: "entretien_sales_trading",
       type: "question",
+      bank_id: "",
       tags: [],
       is_public: true,
     },
@@ -83,6 +89,23 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
     formState: { errors },
   } = form;
   const tags = watch("tags");
+  const selectedBankId = watch("bank_id");
+
+  // Fetch banks on component mount
+  useEffect(() => {
+    async function loadBanks() {
+      try {
+        const banksData = await fetchBanks();
+        setBanks(banksData);
+      } catch (error) {
+        console.error("Error loading banks:", error);
+        toast.error("Erreur lors du chargement des banques");
+      } finally {
+        setBanksLoading(false);
+      }
+    }
+    loadBanks();
+  }, []);
 
   const addTag = () => {
     if (tagInput.trim() && !tags.includes(tagInput.trim())) {
@@ -96,6 +119,10 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
       "tags",
       tags.filter((t) => t !== tag)
     );
+  };
+
+  const selectBank = (bankId: string) => {
+    setValue("bank_id", bankId);
   };
 
   const onSubmit = async (formData: CreatePostForm) => {
@@ -116,6 +143,7 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
         content,
         category: formData.category,
         type: formData.type,
+        bank_id: formData.bank_id,
         tags: formData.tags,
         is_public: formData.is_public,
         userId,
@@ -187,6 +215,60 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
             />
             {errors.title && (
               <p className="text-sm text-destructive">{errors.title.message}</p>
+            )}
+          </div>
+
+          {/* Bank Selection */}
+          <div className="space-y-2">
+            <Label>
+              Banque
+              <RequiredAsterisk />
+            </Label>
+            {banksLoading ? (
+              <div className="flex items-center justify-center p-4">
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <span className="text-sm text-muted-foreground ml-2">
+                  Chargement...
+                </span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                {banks.map((bank) => (
+                  <div
+                    key={bank.id}
+                    onClick={() => selectBank(bank.id)}
+                    className={cn(
+                      "relative p-2 border-2 rounded-lg cursor-pointer transition-all hover:shadow-md",
+                      selectedBankId === bank.id
+                        ? "border-primary bg-primary/5"
+                        : "border-muted hover:border-muted-foreground/50"
+                    )}
+                  >
+                    {selectedBankId === bank.id && (
+                      <div className="absolute top-1 right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+                        <Check className="w-2 h-2 text-primary-foreground" />
+                      </div>
+                    )}
+                    <div className="flex flex-col items-center text-center space-y-1">
+                      <div className="w-8 h-8 relative flex-shrink-0">
+                        <img
+                          src={bank.logo_url}
+                          alt={bank.name}
+                          className="object-contain rounded"
+                        />
+                      </div>
+                      <span className="text-xs font-medium leading-tight">
+                        {bank.name}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {errors.bank_id && (
+              <p className="text-sm text-destructive">
+                {errors.bank_id.message}
+              </p>
             )}
           </div>
 

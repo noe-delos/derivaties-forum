@@ -147,31 +147,36 @@ export function PostCard({
       <CardHeader className="pb-0">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3 flex-1">
-            <Link href={`/profile/${post.user?.id}`}>
-              <Avatar className="h-10 w-10 cursor-pointer hover:opacity-80 transition-opacity">
-                <AvatarImage
-                  src={post.user?.profile_picture_url}
-                  alt={getUserDisplayName(post.user)}
-                />
-                <AvatarFallback className="text-sm">
-                  {getUserInitials(post.user)}
-                </AvatarFallback>
-              </Avatar>
-            </Link>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Link
-                  href={`/profile/${post.user?.id}`}
-                  className="font-medium hover:underline"
-                >
-                  {getUserDisplayName(post.user)}
-                </Link>
-                <span className="text-xs text-muted-foreground ml-1">
-                  {formatDistanceToNow(new Date(post.created_at), {
-                    locale: fr,
-                    addSuffix: true,
-                  })}
-                </span>
+            {/* Bank Logo and Name */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 relative flex-shrink-0">
+                {post.bank?.logo_url ? (
+                  <img
+                    src={post.bank.logo_url}
+                    alt={post.bank.name || "Bank"}
+                    className="object-contain rounded-lg"
+                  />
+                ) : (
+                  <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
+                    <Icon
+                      icon="mdi:bank"
+                      className="h-6 w-6 text-muted-foreground"
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium text-lg">
+                    {post.bank?.name || "Banque"}
+                  </span>
+                  <span className="text-xs text-muted-foreground ml-1">
+                    {formatDistanceToNow(new Date(post.created_at), {
+                      locale: fr,
+                      addSuffix: true,
+                    })}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -473,14 +478,26 @@ export function PostCard({
               </DropdownMenu>
             </div>
 
-            {/* Finance tag on the right */}
-            <div>
-              <Badge
-                variant="secondary"
-                className="text-base px-4 py-1 font-medium"
+            {/* User info on the right */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">par</span>
+              <Link
+                href={`/profile/${post.user?.id}`}
+                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
               >
-                Finance
-              </Badge>
+                <Avatar className="h-6 w-6">
+                  <AvatarImage
+                    src={post.user?.profile_picture_url}
+                    alt={getUserDisplayName(post.user)}
+                  />
+                  <AvatarFallback className="text-xs">
+                    {getUserInitials(post.user)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-sm font-medium">
+                  {getUserDisplayName(post.user)}
+                </span>
+              </Link>
             </div>
           </div>
         </CardFooter>

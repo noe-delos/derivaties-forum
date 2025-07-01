@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "@iconify/react";
 
 import {
@@ -23,7 +23,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { User as UserType } from "@/lib/types";
+import { User as UserType, Bank } from "@/lib/types";
+import { fetchBanks } from "@/lib/services/banks";
+import { Loader2 } from "lucide-react";
 
 interface AppSidebarProps {
   isAuthenticated: boolean;
@@ -75,31 +77,78 @@ const categoryItems = [
   {
     title: "Entretiens S&T",
     key: "entretien_sales_trading",
-    icon: "stash:headset-solid",
+    icon: "bi:camera-video-fill",
   },
   {
     title: "École",
     key: "conseils_ecole",
-    icon: "map:university",
+    icon: "basil:university-solid",
   },
   {
     title: "Stages",
     key: "stage_summer_graduate",
-    icon: "material-symbols:badge-rounded",
+    icon: "solar:suitcase-bold",
   },
   {
     title: "Quant & HF",
     key: "quant_hedge_funds",
-    icon: "tabler:math-max",
+    icon: "solar:chart-bold",
   },
 ];
 
 export function AppSidebar({ isAuthenticated, profile }: AppSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { state, toggleSidebar } = useSidebar();
   const [isHovered, setIsHovered] = React.useState(false);
+  const [banks, setBanks] = useState<Bank[]>([]);
+  const [banksLoading, setBanksLoading] = useState(true);
+  const [selectedBanks, setSelectedBanks] = useState<string[]>([]);
 
   const isCollapsed = state === "collapsed";
+
+  // Fetch banks on component mount
+  useEffect(() => {
+    async function loadBanks() {
+      try {
+        const banksData = await fetchBanks();
+        setBanks(banksData);
+      } catch (error) {
+        console.error("Error loading banks:", error);
+      } finally {
+        setBanksLoading(false);
+      }
+    }
+    loadBanks();
+  }, []);
+
+  // Initialize selected banks from URL params
+  useEffect(() => {
+    const banksParam = searchParams.get("banks");
+    if (banksParam) {
+      setSelectedBanks(banksParam.split(","));
+    }
+  }, [searchParams]);
+
+  const toggleBankFilter = (bankId: string) => {
+    const newSelectedBanks = selectedBanks.includes(bankId)
+      ? selectedBanks.filter((id) => id !== bankId)
+      : [...selectedBanks, bankId];
+
+    setSelectedBanks(newSelectedBanks);
+
+    // Update URL with new bank filters
+    const params = new URLSearchParams(searchParams.toString());
+    if (newSelectedBanks.length > 0) {
+      params.set("banks", newSelectedBanks.join(","));
+    } else {
+      params.delete("banks");
+    }
+
+    const url = `/${params.toString() ? `?${params.toString()}` : ""}`;
+    router.push(url, { scroll: false });
+  };
 
   return (
     <Sidebar collapsible="icon">
@@ -173,7 +222,7 @@ export function AppSidebar({ isAuthenticated, profile }: AppSidebarProps) {
                     <Link href={item.url}>
                       <Icon
                         icon={item.icon}
-                        className="size-7 text-foreground/50"
+                        className="size-7 text-foreground/30"
                       />
                       <span>{item.title}</span>
                     </Link>
@@ -185,27 +234,27 @@ export function AppSidebar({ isAuthenticated, profile }: AppSidebarProps) {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-muted-foreground/80">
+          <SidebarGroupLabel className="text-muted-foreground/80 pb-5">
             Catégories
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="px-4">
               {categoryItems.map((item) => {
                 const isActive = pathname === `/categories/${item.key}`;
 
                 return (
-                  <SidebarMenuItem key={item.key}>
+                  <SidebarMenuItem key={item.key} className="p-0">
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
-                      className="px-6"
+                      className={"px-6 py-0"}
                     >
-                      <Link href={`/categories/${item.key}`}>
-                        <Icon
-                          icon={item.icon}
-                          className="size-10 text-foreground/50"
-                        />
-                        <span className="font-medium text-foreground">
+                      <Link href={`/categories/${item.key}`} className="p-0">
+                        <span className="font-medium text-foreground flex flex-row items-center gap-3">
+                          <Icon
+                            icon={item.icon}
+                            className="text-foreground/30 size-4"
+                          />
                           {item.title}
                         </span>
                       </Link>
@@ -214,6 +263,63 @@ export function AppSidebar({ isAuthenticated, profile }: AppSidebarProps) {
                 );
               })}
             </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-muted-foreground/80 pb-3">
+            Banques
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            {banksLoading ? (
+              <div className="flex items-center justify-center p-4">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm text-muted-foreground ml-2">
+                  Chargement...
+                </span>
+              </div>
+            ) : (
+              <div className="px-4 grid grid-cols-2 gap-2">
+                {banks.map((bank) => {
+                  const isSelected = selectedBanks.includes(bank.id);
+
+                  return (
+                    <div
+                      key={bank.id}
+                      onClick={() => toggleBankFilter(bank.id)}
+                      className={cn(
+                        "flex flex-col items-center gap-1 p-2 rounded-lg cursor-pointer transition-all hover:bg-muted/60 text-center",
+                        isSelected && "bg-primary/10 border border-primary/20"
+                      )}
+                    >
+                      <div className="w-5 h-5 relative flex-shrink-0">
+                        <img
+                          src={bank.logo_url}
+                          alt={bank.name}
+                          className="object-contain rounded"
+                        />
+                      </div>
+                      <span
+                        className={cn(
+                          "text-xs font-medium leading-tight",
+                          isSelected ? "text-primary" : "text-foreground"
+                        )}
+                      >
+                        {bank.name}
+                      </span>
+                      {isSelected && (
+                        <Badge
+                          variant="secondary"
+                          className="h-3 w-3 p-0 flex items-center justify-center"
+                        >
+                          <Icon icon="mdi:check" className="h-2 w-2" />
+                        </Badge>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

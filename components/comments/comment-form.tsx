@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { TiptapEditor } from "@/components/editor/tiptap-editor";
@@ -23,6 +24,7 @@ export function CommentForm({
   placeholder = "Écrivez votre commentaire...",
 }: CommentFormProps) {
   const { profile } = useAuth();
+  const queryClient = useQueryClient();
   const [content, setContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -41,7 +43,14 @@ export function CommentForm({
         content,
         user_id: profile.id,
       });
+
       setContent("");
+
+      // Invalidate comments queries to show new comment
+      queryClient.invalidateQueries({
+        queryKey: ["comments", postId],
+      });
+
       toast.success("Commentaire publié!");
       onSuccess?.();
     } catch (error) {

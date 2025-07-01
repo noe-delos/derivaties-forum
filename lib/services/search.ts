@@ -253,6 +253,11 @@ export async function enhancedSearchPosts({
         profile_picture_url,
         role
       ),
+      bank:banks!posts_bank_id_fkey(
+        id,
+        name,
+        logo_url
+      ),
       media:post_media(*),
       user_vote:votes!votes_post_id_fkey(vote_type)
     `,
@@ -302,6 +307,10 @@ export async function enhancedSearchPosts({
   if (effectiveFilters.type) {
     console.log("📝 Applying type filter:", effectiveFilters.type);
     dbQuery = dbQuery.eq("type", effectiveFilters.type);
+  }
+  if (effectiveFilters.banks && effectiveFilters.banks.length > 0) {
+    console.log("🏦 Applying banks filter:", effectiveFilters.banks);
+    dbQuery = dbQuery.in("bank_id", effectiveFilters.banks);
   }
   if (effectiveFilters.tags && effectiveFilters.tags.length > 0) {
     console.log("🏷️ Applying tags filter:", effectiveFilters.tags);

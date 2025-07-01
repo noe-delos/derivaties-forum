@@ -1,20 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { ChevronUp, ChevronDown, Reply } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CommentForm } from "./comment-form";
-import { Comment, User as UserType } from "@/lib/types";
+import { Comment } from "@/lib/types";
 import { useAuth } from "@/lib/providers/auth-provider";
 import { voteComment } from "@/lib/services/comments";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { AuthChangeEvent, Session } from "@supabase/supabase-js";
 
 interface CommentCardProps {
   comment: Comment;
@@ -31,61 +31,9 @@ export function CommentCard({
   activeEditor,
   onEditorChange,
 }: CommentCardProps) {
-  const [profile, setProfile] = useState<UserType | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const { supabase } = useAuth();
+  const { isAuthenticated, profile } = useAuth();
+  const queryClient = useQueryClient();
   const [isVoting, setIsVoting] = useState(false);
-
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        if (session?.user) {
-          setIsAuthenticated(true);
-          const { data } = await supabase
-            .from("users")
-            .select("*")
-            .eq("id", session.user.id)
-            .single();
-
-          setProfile(data as UserType);
-        } else {
-          setIsAuthenticated(false);
-          setProfile(null);
-        }
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-      }
-    };
-
-    fetchUserData();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(
-      async (event: AuthChangeEvent, session: Session | null) => {
-        if (event === "SIGNED_IN" && session?.user) {
-          setIsAuthenticated(true);
-          const { data } = await supabase
-            .from("users")
-            .select("*")
-            .eq("id", session.user.id)
-            .single();
-          setProfile(data as UserType);
-        } else if (event === "SIGNED_OUT") {
-          setIsAuthenticated(false);
-          setProfile(null);
-        }
-      }
-    );
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [supabase]);
 
   const handleVote = async (voteType: 1 | -1) => {
     if (!isAuthenticated || !profile) {
@@ -96,6 +44,12 @@ export function CommentCard({
     try {
       setIsVoting(true);
       await voteComment(comment.id, voteType, profile.id);
+
+      // Invalidate comments query to refresh vote counts
+      queryClient.invalidateQueries({
+        queryKey: ["comments", comment.post_id],
+      });
+
       toast.success("Vote enregistré!");
     } catch (error) {
       console.error("Error voting:", error);
@@ -125,6 +79,14 @@ export function CommentCard({
 
   const userVote = comment.user_vote?.vote_type;
   const isReplyFormVisible = activeEditor === comment.id;
+
+  const handleSuccessfulReply = () => {
+    onEditorChange(null);
+    // Invalidate comments query to show new reply
+    queryClient.invalidateQueries({
+      queryKey: ["comments", comment.post_id],
+    });
+  };
 
   return (
     <div className="py-2 px-3 hover:bg-muted/30 rounded-lg transition-colors">
@@ -213,7 +175,7 @@ export function CommentCard({
               <CommentForm
                 postId={comment.post_id}
                 parentId={comment.id}
-                onSuccess={() => onEditorChange(null)}
+                onSuccess={handleSuccessfulReply}
                 placeholder="Répondre à ce commentaire..."
               />
             </div>

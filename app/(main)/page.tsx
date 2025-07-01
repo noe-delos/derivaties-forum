@@ -20,11 +20,13 @@ export default function HomePage() {
     const type = searchParams.get("type");
     const sort = searchParams.get("sort") || "recent";
     const nl = searchParams.get("nl") === "true";
+    const banksParam = searchParams.get("banks");
 
     setSearchQuery(query);
     setSearchFilters({
       category: (category as PostCategory) || undefined,
       type: (type as PostType) || undefined,
+      banks: banksParam ? banksParam.split(",") : undefined,
       sortBy: sort as "recent" | "popular" | "comments",
     });
     setIsNaturalLanguage(nl);

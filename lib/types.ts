@@ -39,9 +39,18 @@ export interface User {
   updated_at: string;
 }
 
+export interface Bank {
+  id: string;
+  name: string;
+  logo_url: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Post {
   id: string;
   user_id: string;
+  bank_id: string;
   title: string;
   content: string;
   category: PostCategory;
@@ -57,6 +66,7 @@ export interface Post {
 
   // Relations
   user?: User;
+  bank?: Bank;
   media?: PostMedia[];
   user_vote?: Vote;
 }
@@ -130,6 +140,7 @@ export interface CreatePostForm {
   content: string;
   category: PostCategory;
   type: PostType;
+  bank_id: string;
   tags: string[];
   is_public: boolean;
   media_files: File[];
@@ -151,6 +162,7 @@ export interface UpdateProfileForm {
 export interface SearchFilters {
   category?: PostCategory;
   type?: PostType;
+  banks?: string[]; // Array of bank IDs
   tags?: string[];
   company?: string;
   position?: string;
