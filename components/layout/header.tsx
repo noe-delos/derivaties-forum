@@ -48,10 +48,10 @@ import {
   PostCategory,
   PostType,
   Bank,
-  CITIES,
 } from "@/lib/types";
 import { signOutAction } from "@/lib/actions/auth";
 import { fetchBanks } from "@/lib/services/banks";
+import { CITIES } from "@/lib/utils";
 
 interface HeaderProps {
   isAuthenticated: boolean;
