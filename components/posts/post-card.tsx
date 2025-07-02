@@ -6,7 +6,7 @@ import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Icon } from "@iconify/react";
-import { Eye } from "lucide-react";
+import { Eye, MapPin } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -25,9 +25,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { Post, POST_CATEGORIES, User as UserType } from "@/lib/types";
+import { Post, User as UserType } from "@/lib/types";
 import { votePost } from "@/lib/services/posts";
 import { useRouter } from "next/navigation";
+import { getCategoryLabel, getCityLabel } from "@/lib/utils";
 
 interface PostCardProps {
   post: Post;
@@ -182,14 +183,20 @@ export function PostCard({
           </div>
 
           {/* Category on top right */}
-          <Badge
-            className={cn(
-              "text-sm px-3 py-1 rounded-full font-medium",
-              categoryColors[post.category] || categoryColors.general
-            )}
-          >
-            {POST_CATEGORIES[post.category]}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge
+              className={cn(
+                "text-sm px-3 py-1 rounded-full font-medium",
+                categoryColors[post.category] || categoryColors.general
+              )}
+            >
+              {getCategoryLabel(post.category)}
+            </Badge>
+            <Badge variant="outline" className="flex items-center gap-1">
+              <MapPin className="h-3 w-3" />
+              {getCityLabel(post.city)}
+            </Badge>
+          </div>
         </div>
       </CardHeader>
 

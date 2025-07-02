@@ -63,6 +63,7 @@ export interface Post {
   comments_count: number;
   created_at: string;
   updated_at: string;
+  city: string;
 
   // Relations
   user?: User;
@@ -162,6 +163,7 @@ export interface UpdateProfileForm {
 export interface SearchFilters {
   category?: PostCategory;
   type?: PostType;
+  city?: string;
   banks?: string[]; // Array of bank IDs
   tags?: string[];
   company?: string;

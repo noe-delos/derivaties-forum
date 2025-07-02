@@ -49,6 +49,18 @@ const createPostSchema = z.object({
   bank_id: z.string().min(1, "Vous devez sélectionner une banque"),
   tags: z.array(z.string()).min(1, "Au moins un tag est requis"),
   is_public: z.boolean(),
+  city: z.enum([
+    "paris",
+    "london",
+    "new_york",
+    "hong_kong",
+    "singapore",
+    "dubai",
+    "frankfurt",
+    "tokyo",
+    "zurich",
+    "toronto",
+  ]),
 });
 
 type CreatePostForm = z.infer<typeof createPostSchema>;
@@ -58,6 +70,19 @@ interface CreatePostFormProps {
 }
 
 const RequiredAsterisk = () => <span className="text-destructive ml-1">*</span>;
+
+const CITIES = {
+  paris: "Paris",
+  london: "Londres",
+  new_york: "New York",
+  hong_kong: "Hong Kong",
+  singapore: "Singapour",
+  dubai: "Dubaï",
+  frankfurt: "Francfort",
+  tokyo: "Tokyo",
+  zurich: "Zurich",
+  toronto: "Toronto",
+} as const;
 
 export function CreatePostForm({ userId }: CreatePostFormProps) {
   const router = useRouter();
@@ -79,6 +104,7 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
       bank_id: "",
       tags: [],
       is_public: true,
+      city: "paris",
     },
   });
 
@@ -147,6 +173,7 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
         tags: formData.tags,
         is_public: formData.is_public,
         userId,
+        city: formData.city,
       });
 
       if (mediaFiles.length > 0 || documentFiles.length > 0) {
@@ -321,6 +348,31 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          {/* City */}
+          <div className="space-y-2">
+            <Label>
+              Ville
+              <RequiredAsterisk />
+            </Label>
+            <Select
+              value={watch("city")}
+              onValueChange={(value: CreatePostForm["city"]) =>
+                setValue("city", value)
+              }
+            >
+              <SelectTrigger className="py-6 rounded-2xl shadow-soft hover:shadow-soft-md transition-shadow cursor-pointer">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(CITIES).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Tags */}

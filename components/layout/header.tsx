@@ -48,6 +48,7 @@ import {
   PostCategory,
   PostType,
   Bank,
+  CITIES,
 } from "@/lib/types";
 import { signOutAction } from "@/lib/actions/auth";
 import { fetchBanks } from "@/lib/services/banks";
@@ -537,6 +538,32 @@ export function Header({
                           <SelectItem value="recent">Récent</SelectItem>
                           <SelectItem value="popular">Populaire</SelectItem>
                           <SelectItem value="comments">Commenté</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* City Filter */}
+                    <div className="space-y-1">
+                      <Label className="text-xs">Ville</Label>
+                      <Select
+                        value={filters.city || "all"}
+                        onValueChange={(value: string) =>
+                          handleFilterChange({
+                            ...filters,
+                            city: value === "all" ? undefined : value,
+                          })
+                        }
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Toutes les villes</SelectItem>
+                          {Object.entries(CITIES).map(([key, label]) => (
+                            <SelectItem key={key} value={key}>
+                              {String(label)}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>

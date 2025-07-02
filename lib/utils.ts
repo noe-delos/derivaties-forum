@@ -34,3 +34,31 @@ export function getUserInitials(user: any): string {
 
   return "U";
 }
+
+export const POST_CATEGORIES = {
+  entretien_sales_trading: "Entretiens Sales & Trading",
+  conseils_ecole: "Conseils École",
+  stage_summer_graduate: "Stages Summer/Graduate",
+  quant_hedge_funds: "Quant & Hedge Funds",
+} as const;
+
+export function getCategoryLabel(category: keyof typeof POST_CATEGORIES) {
+  return POST_CATEGORIES[category] || category;
+}
+
+export const CITIES = {
+  paris: "Paris",
+  london: "Londres",
+  new_york: "New York",
+  hong_kong: "Hong Kong",
+  singapore: "Singapour",
+  dubai: "Dubaï",
+  frankfurt: "Francfort",
+  tokyo: "Tokyo",
+  zurich: "Zurich",
+  toronto: "Toronto",
+} as const;
+
+export function getCityLabel(city: string) {
+  return (CITIES as Record<string, string>)[city] || city.replace("_", " ");
+}

@@ -7,6 +7,7 @@ CREATE TYPE post_category AS ENUM ('entretien_sales_trading', 'conseils_ecole', 
 CREATE TYPE post_type AS ENUM ('question', 'retour_experience', 'transcript_entretien', 'fichier_attache');
 CREATE TYPE post_status AS ENUM ('pending', 'approved', 'rejected');
 CREATE TYPE notification_type AS ENUM ('post_approved', 'post_rejected', 'comment_on_post', 'upvote_received');
+CREATE TYPE post_city AS ENUM ('paris', 'london', 'new_york', 'hong_kong', 'singapore', 'dubai', 'frankfurt', 'tokyo', 'zurich', 'toronto');
 
 -- Users table (extends auth.users)
 CREATE TABLE public.users (
@@ -36,6 +37,7 @@ CREATE TABLE public.posts (
     content text NOT NULL, -- Tiptap markdown content
     category post_category NOT NULL,
     type post_type NOT NULL,
+    city post_city NOT NULL,
     tags text[] DEFAULT '{}',
     is_public boolean DEFAULT false, -- visible to anonymous users
     status post_status DEFAULT 'pending',
