@@ -25,7 +25,13 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { User as UserType, Bank } from "@/lib/types";
 import { fetchBanks } from "@/lib/services/banks";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronDown, X, ChevronDownIcon } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select";
 
 interface AppSidebarProps {
   isAuthenticated: boolean;
@@ -95,6 +101,136 @@ const categoryItems = [
     icon: "solar:chart-bold",
   },
 ];
+
+interface BankMultiSelectProps {
+  banks: Bank[];
+  selectedBanks: string[];
+  onBankToggle: (bankId: string) => void;
+  isLoading: boolean;
+  onClear: () => void;
+}
+
+function BankMultiSelect({
+  banks,
+  selectedBanks,
+  onBankToggle,
+  isLoading,
+  onClear,
+}: BankMultiSelectProps) {
+  const [open, setOpen] = React.useState(false);
+
+  const selectedBankData = banks.filter((bank) =>
+    selectedBanks.includes(bank.id)
+  );
+
+  const renderTrigger = () => {
+    if (selectedBanks.length === 0) {
+      return (
+        <span className="text-muted-foreground text-sm">
+          Sélectionner des banques
+        </span>
+      );
+    }
+
+    const displayBanks = selectedBankData.slice(0, 2);
+    const remainingCount = selectedBankData.length - 2;
+
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium">Banques</span>
+        <div className="h-4 w-px bg-border" />
+        <div className="flex items-center gap-1">
+          {displayBanks.map((bank) => (
+            <div
+              key={bank.id}
+              className="w-5 h-5 rounded-full bg-muted flex items-center justify-center overflow-hidden"
+            >
+              <img
+                src={bank.logo_url}
+                alt={bank.name}
+                className="w-full h-full object-contain"
+              />
+            </div>
+          ))}
+          {remainingCount > 0 && (
+            <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center">
+              <span className="text-xs font-medium text-primary">
+                +{remainingCount}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-4">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span className="text-sm text-muted-foreground ml-2">
+          Chargement...
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <Select open={open} onOpenChange={setOpen}>
+      <SelectTrigger
+        className="w-full justify-between py-5 px-4 rounded-xl shadow-soft hover:cursor-pointer hover:bg-muted"
+        onClick={() => setOpen(!open)}
+      >
+        {renderTrigger()}
+        <ChevronDownIcon className="size-4 opacity-50" />
+      </SelectTrigger>
+      <SelectContent className="w-fit">
+        <div className="max-h-[300px] overflow-y-auto">
+          {banks.map((bank) => {
+            const isSelected = selectedBanks.includes(bank.id);
+            return (
+              <div
+                key={bank.id}
+                className="relative flex w-full cursor-pointer items-center gap-3 rounded-sm py-1.5 px-2 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
+                onClick={() => onBankToggle(bank.id)}
+              >
+                <div className="flex items-center justify-center w-4 h-4 border border-muted-foreground/30 rounded-sm">
+                  {isSelected && (
+                    <Icon icon="mdi:check" className="h-3 w-3 text-primary" />
+                  )}
+                </div>
+                <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <img
+                    src={bank.logo_url}
+                    alt={bank.name}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <span className="flex-1 text-sm font-medium">{bank.name}</span>
+              </div>
+            );
+          })}
+        </div>
+        {selectedBanks.length > 0 && (
+          <>
+            <div className="border-t my-1" />
+            <div className="p-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onClear}
+                className="w-full text-xs"
+              >
+                <X className="h-3 w-3 mr-1" />
+                Effacer
+              </Button>
+            </div>
+          </>
+        )}
+      </SelectContent>
+    </Select>
+  );
+}
 
 export function AppSidebar({ isAuthenticated, profile }: AppSidebarProps) {
   const pathname = usePathname();
@@ -238,7 +374,7 @@ export function AppSidebar({ isAuthenticated, profile }: AppSidebarProps) {
             Catégories
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu className="px-4">
+            <SidebarMenu className="px-0">
               {categoryItems.map((item) => {
                 const isActive = pathname === `/categories/${item.key}`;
 
@@ -271,55 +407,23 @@ export function AppSidebar({ isAuthenticated, profile }: AppSidebarProps) {
             Banques
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            {banksLoading ? (
-              <div className="flex items-center justify-center p-4">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm text-muted-foreground ml-2">
-                  Chargement...
-                </span>
-              </div>
-            ) : (
-              <div className="px-4 grid grid-cols-2 gap-2">
-                {banks.map((bank) => {
-                  const isSelected = selectedBanks.includes(bank.id);
-
-                  return (
-                    <div
-                      key={bank.id}
-                      onClick={() => toggleBankFilter(bank.id)}
-                      className={cn(
-                        "flex flex-col items-center gap-1 p-2 rounded-lg cursor-pointer transition-all hover:bg-muted/60 text-center",
-                        isSelected && "bg-primary/10 border border-primary/20"
-                      )}
-                    >
-                      <div className="w-5 h-5 relative flex-shrink-0">
-                        <img
-                          src={bank.logo_url}
-                          alt={bank.name}
-                          className="object-contain rounded"
-                        />
-                      </div>
-                      <span
-                        className={cn(
-                          "text-xs font-medium leading-tight",
-                          isSelected ? "text-primary" : "text-foreground"
-                        )}
-                      >
-                        {bank.name}
-                      </span>
-                      {isSelected && (
-                        <Badge
-                          variant="secondary"
-                          className="h-3 w-3 p-0 flex items-center justify-center"
-                        >
-                          <Icon icon="mdi:check" className="h-2 w-2" />
-                        </Badge>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            <div className="px-2">
+              <BankMultiSelect
+                banks={banks}
+                selectedBanks={selectedBanks}
+                onBankToggle={toggleBankFilter}
+                isLoading={banksLoading}
+                onClear={() => {
+                  setSelectedBanks([]);
+                  const params = new URLSearchParams(searchParams.toString());
+                  params.delete("banks");
+                  const url = `/${
+                    params.toString() ? `?${params.toString()}` : ""
+                  }`;
+                  router.push(url, { scroll: false });
+                }}
+              />
+            </div>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

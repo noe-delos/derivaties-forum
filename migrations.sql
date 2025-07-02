@@ -45,6 +45,8 @@ CREATE TABLE public.posts (
     upvotes integer DEFAULT 0,
     downvotes integer DEFAULT 0,
     comments_count integer DEFAULT 0,
+    impressions integer DEFAULT 0, -- view count/popularity metric
+    corrected boolean DEFAULT false, -- whether the post has been corrected
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now()
 );
@@ -486,6 +488,7 @@ CREATE INDEX idx_posts_status_public ON public.posts(status, is_public);
 CREATE INDEX idx_posts_user_id ON public.posts(user_id);
 CREATE INDEX idx_posts_category ON public.posts(category);
 CREATE INDEX idx_posts_created_at ON public.posts(created_at DESC);
+CREATE INDEX idx_posts_impressions ON public.posts(impressions DESC);
 CREATE INDEX idx_comments_post_id ON public.comments(post_id);
 CREATE INDEX idx_comments_user_id ON public.comments(user_id);
 CREATE INDEX idx_votes_post_id ON public.votes(post_id);

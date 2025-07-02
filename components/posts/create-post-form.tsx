@@ -6,7 +6,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
-import { Loader2, Plus, X, Check } from "lucide-react";
+import { Loader2, X, ChevronDownIcon } from "lucide-react";
+import { Icon } from "@iconify/react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { TiptapEditor } from "@/components/editor/tiptap-editor";
 import { FileUpload } from "@/components/ui/file-upload";
@@ -49,18 +49,8 @@ const createPostSchema = z.object({
   bank_id: z.string().min(1, "Vous devez sélectionner une banque"),
   tags: z.array(z.string()).min(1, "Au moins un tag est requis"),
   is_public: z.boolean(),
-  city: z.enum([
-    "paris",
-    "london",
-    "new_york",
-    "hong_kong",
-    "singapore",
-    "dubai",
-    "frankfurt",
-    "tokyo",
-    "zurich",
-    "toronto",
-  ]),
+  city: z.string().min(1, "Vous devez sélectionner une ville"),
+  custom_city: z.string().optional(),
 });
 
 type CreatePostForm = z.infer<typeof createPostSchema>;
@@ -84,6 +74,107 @@ const CITIES = {
   toronto: "Toronto",
 } as const;
 
+interface BankSingleSelectProps {
+  banks: Bank[];
+  selectedBankId: string;
+  onBankSelect: (bankId: string) => void;
+  isLoading: boolean;
+  error?: string;
+}
+
+function BankSingleSelect({
+  banks,
+  selectedBankId,
+  onBankSelect,
+  isLoading,
+  error,
+}: BankSingleSelectProps) {
+  const [open, setOpen] = useState(false);
+  const selectedBank = banks.find((bank) => bank.id === selectedBankId);
+
+  const renderTrigger = () => {
+    if (!selectedBank) {
+      return (
+        <span className="text-muted-foreground text-sm">
+          Sélectionner une banque
+        </span>
+      );
+    }
+
+    return (
+      <div className="flex items-center gap-3">
+        <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+          <img
+            src={selectedBank.logo_url}
+            alt={selectedBank.name}
+            className="w-full h-full object-contain"
+          />
+        </div>
+        <span className="text-sm font-medium">{selectedBank.name}</span>
+      </div>
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-4 border rounded-xl">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span className="text-sm text-muted-foreground ml-2">
+          Chargement...
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <Select open={open} onOpenChange={setOpen}>
+        <SelectTrigger
+          className="w-fit justify-between py-6 px-4 rounded-xl shadow-soft hover:cursor-pointer hover:bg-muted"
+          onClick={() => setOpen(!open)}
+        >
+          {renderTrigger()}
+          <ChevronDownIcon className="size-4 opacity-50" />
+        </SelectTrigger>
+        <SelectContent className="w-fit">
+          <div className="max-h-[300px] overflow-y-auto">
+            {banks.map((bank) => {
+              const isSelected = selectedBankId === bank.id;
+              return (
+                <div
+                  key={bank.id}
+                  className="relative flex w-full cursor-pointer items-center gap-3 rounded-sm py-1.5 px-2 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
+                  onClick={() => {
+                    onBankSelect(bank.id);
+                    setOpen(false);
+                  }}
+                >
+                  <div className="flex items-center justify-center w-4 h-4">
+                    {isSelected && (
+                      <Icon icon="mdi:check" className="h-3 w-3 text-primary" />
+                    )}
+                  </div>
+                  <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img
+                      src={bank.logo_url}
+                      alt={bank.name}
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <span className="flex-1 text-sm font-medium">
+                    {bank.name}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </SelectContent>
+      </Select>
+      {error && <p className="text-sm text-destructive">{error}</p>}
+    </div>
+  );
+}
+
 export function CreatePostForm({ userId }: CreatePostFormProps) {
   const router = useRouter();
 
@@ -94,6 +185,7 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
   const [documentFiles, setDocumentFiles] = useState<File[]>([]);
   const [banks, setBanks] = useState<Bank[]>([]);
   const [banksLoading, setBanksLoading] = useState(true);
+  const [customCityInput, setCustomCityInput] = useState("");
 
   const form = useForm<CreatePostForm>({
     resolver: zodResolver(createPostSchema),
@@ -105,6 +197,7 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
       tags: [],
       is_public: true,
       city: "paris",
+      custom_city: "",
     },
   });
 
@@ -116,6 +209,8 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
   } = form;
   const tags = watch("tags");
   const selectedBankId = watch("bank_id");
+  const selectedCity = watch("city");
+  const isPublic = watch("is_public");
 
   // Fetch banks on component mount
   useEffect(() => {
@@ -173,7 +268,10 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
         tags: formData.tags,
         is_public: formData.is_public,
         userId,
-        city: formData.city,
+        city:
+          formData.city === "autre"
+            ? formData.custom_city || "autre"
+            : formData.city,
       });
 
       if (mediaFiles.length > 0 || documentFiles.length > 0) {
@@ -251,52 +349,13 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
               Banque
               <RequiredAsterisk />
             </Label>
-            {banksLoading ? (
-              <div className="flex items-center justify-center p-4">
-                <Loader2 className="h-6 w-6 animate-spin" />
-                <span className="text-sm text-muted-foreground ml-2">
-                  Chargement...
-                </span>
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                {banks.map((bank) => (
-                  <div
-                    key={bank.id}
-                    onClick={() => selectBank(bank.id)}
-                    className={cn(
-                      "relative p-2 border-2 rounded-lg cursor-pointer transition-all hover:shadow-md",
-                      selectedBankId === bank.id
-                        ? "border-primary bg-primary/5"
-                        : "border-muted hover:border-muted-foreground/50"
-                    )}
-                  >
-                    {selectedBankId === bank.id && (
-                      <div className="absolute top-1 right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
-                        <Check className="w-2 h-2 text-primary-foreground" />
-                      </div>
-                    )}
-                    <div className="flex flex-col items-center text-center space-y-1">
-                      <div className="w-8 h-8 relative flex-shrink-0">
-                        <img
-                          src={bank.logo_url}
-                          alt={bank.name}
-                          className="object-contain rounded"
-                        />
-                      </div>
-                      <span className="text-xs font-medium leading-tight">
-                        {bank.name}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {errors.bank_id && (
-              <p className="text-sm text-destructive">
-                {errors.bank_id.message}
-              </p>
-            )}
+            <BankSingleSelect
+              banks={banks}
+              selectedBankId={selectedBankId}
+              onBankSelect={selectBank}
+              isLoading={banksLoading}
+              error={errors.bank_id?.message}
+            />
           </div>
 
           {/* Category and Type */}
@@ -314,6 +373,7 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
               >
                 <SelectTrigger className="py-6 rounded-2xl shadow-soft hover:shadow-soft-md transition-shadow cursor-pointer">
                   <SelectValue />
+                  <ChevronDownIcon className="size-4 opacity-50" />
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(POST_CATEGORIES).map(([key, label]) => (
@@ -338,6 +398,7 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
               >
                 <SelectTrigger className="py-6 rounded-2xl shadow-soft hover:shadow-soft-md transition-shadow cursor-pointer">
                   <SelectValue />
+                  <ChevronDownIcon className="size-4 opacity-50" />
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(POST_TYPES).map(([key, label]) => (
@@ -357,13 +418,18 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
               <RequiredAsterisk />
             </Label>
             <Select
-              value={watch("city")}
-              onValueChange={(value: CreatePostForm["city"]) =>
-                setValue("city", value)
-              }
+              value={selectedCity}
+              onValueChange={(value) => {
+                setValue("city", value);
+                if (value !== "autre") {
+                  setCustomCityInput("");
+                  setValue("custom_city", "");
+                }
+              }}
             >
               <SelectTrigger className="py-6 rounded-2xl shadow-soft hover:shadow-soft-md transition-shadow cursor-pointer">
                 <SelectValue />
+                <ChevronDownIcon className="size-4 opacity-50" />
               </SelectTrigger>
               <SelectContent>
                 {Object.entries(CITIES).map(([value, label]) => (
@@ -371,8 +437,20 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
                     {label}
                   </SelectItem>
                 ))}
+                <SelectItem value="autre">Autre</SelectItem>
               </SelectContent>
             </Select>
+            {selectedCity === "autre" && (
+              <Input
+                placeholder="Entrez le nom de la ville..."
+                value={customCityInput}
+                onChange={(e) => {
+                  setCustomCityInput(e.target.value);
+                  setValue("custom_city", e.target.value);
+                }}
+                className="py-6 rounded-2xl shadow-soft hover:shadow-soft-md transition-shadow cursor-pointer placeholder:text-foreground/20"
+              />
+            )}
           </div>
 
           {/* Tags */}
@@ -381,27 +459,26 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
               Tags
               <RequiredAsterisk />
             </Label>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Ajouter un tag..."
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addTag();
-                  }
-                }}
-                className="py-6 rounded-2xl shadow-soft hover:shadow-soft-md transition-shadow cursor-pointer placeholder:text-foreground/20"
-              />
-              <Button type="button" onClick={addTag} size="sm">
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
+            <Input
+              placeholder="Ajouter un tag et appuyer sur Entrée..."
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addTag();
+                }
+              }}
+              className="py-6 rounded-2xl shadow-soft hover:shadow-soft-md transition-shadow cursor-pointer placeholder:text-foreground/20"
+            />
             {tags.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="gap-1">
+                  <Badge
+                    key={tag}
+                    variant="secondary"
+                    className="gap-1 py-2 px-3 rounded-xl"
+                  >
                     {tag}
                     <Button
                       type="button"
@@ -422,15 +499,26 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
           </div>
 
           {/* Public/Private */}
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="is_public"
-              checked={watch("is_public")}
-              onCheckedChange={(checked) => setValue("is_public", checked)}
-            />
-            <Label htmlFor="is_public">
-              Publication publique (visible par les utilisateurs non connectés)
-            </Label>
+          <div className="space-y-2">
+            <Label>Visibilité</Label>
+            <Button
+              type="button"
+              variant="outline"
+              className={cn(
+                "py-6 px-4 rounded-xl border-2 border-dashed transition-all cursor-pointer",
+                isPublic
+                  ? "border-dashed border-primary bg-primary/5 text-primary hover:bg-primary/10"
+                  : "border-dashed border-muted-foreground/30 hover:border-muted-foreground/50"
+              )}
+              onClick={() => setValue("is_public", !isPublic)}
+            >
+              {isPublic ? "Publique" : "Privé"}
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              {isPublic
+                ? "Visible par tous les utilisateurs"
+                : "Visible uniquement par les utilisateurs connectés"}
+            </p>
           </div>
         </CardContent>
       </Card>

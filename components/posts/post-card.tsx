@@ -6,15 +6,8 @@ import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Icon } from "@iconify/react";
-import { Eye, MapPin } from "lucide-react";
+import { Eye } from "lucide-react";
 import { toast } from "sonner";
-
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -24,11 +17,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { Post, User as UserType } from "@/lib/types";
-import { votePost } from "@/lib/services/posts";
+import { Post } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { getCategoryLabel, getCityLabel } from "@/lib/utils";
+import { ReportDialog } from "./report-dialog";
 
 interface PostCardProps {
   post: Post;
@@ -36,8 +35,9 @@ interface PostCardProps {
   showActions?: boolean;
   expanded?: boolean;
   className?: string;
-  isAuthenticated?: boolean;
-  profile?: UserType | null;
+  isAuthenticated?: boolean; // Kept for future functionality
+  profile?: any; // Kept for future functionality
+  isFeedView?: boolean;
 }
 
 const categoryColors: Record<string, string> = {
@@ -55,13 +55,15 @@ export function PostCard({
   showActions = true,
   expanded = false,
   className,
-  isAuthenticated = false,
-  profile = null,
+  isAuthenticated = false, // Kept for future functionality
+  profile = null, // Kept for future functionality
+  isFeedView = false,
 }: PostCardProps) {
-  const [isVoting, setIsVoting] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const router = useRouter();
 
+  console.log(isAuthenticated, profile);
   const getUserInitials = (user: any) => {
     if (user?.first_name && user?.last_name) {
       return `${user.first_name[0]}${user.last_name[0]}`.toUpperCase();
@@ -80,28 +82,6 @@ export function PostCard({
       return user.username;
     }
     return "Utilisateur anonyme";
-  };
-
-  const handleVote = async (voteType: 1 | -1) => {
-    if (!isAuthenticated || !profile) {
-      toast.error("Vous devez être connecté pour voter");
-      return;
-    }
-
-    try {
-      setIsVoting(true);
-      await votePost(post.id, voteType, profile.id);
-      toast.success("Vote enregistré!");
-
-      // Optionally refresh the page or update the post data
-      // For now, we'll just show success message
-      // In a real app, you'd want to update the post data in the query cache
-    } catch (error) {
-      console.error("Error voting:", error);
-      toast.error("Erreur lors du vote");
-    } finally {
-      setIsVoting(false);
-    }
   };
 
   const handleCopyLink = async () => {
@@ -134,23 +114,25 @@ export function PostCard({
     ? post.content.substring(0, 200) + "..."
     : post.content;
 
-  const userVote = post.user_vote?.vote_type;
-  const netVotes = post.upvotes - post.downvotes;
-
   return (
-    <Card
+    <div
       className={cn(
-        "w-full hover:bg-muted/50 hover:cursor-pointer transition-colors",
+        "w-full hover:border-muted-foreground/20 hover:cursor-pointer transition-colors p-7 border border-muted-foreground/10 shadow-soft rounded-[1.5rem]",
         className
       )}
       onClick={handleCardClick}
     >
-      <CardHeader className="pb-0">
+      <div className="pb-4 my-0 py-0">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3 flex-1">
             {/* Bank Logo and Name */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 relative flex-shrink-0">
+              <div
+                className={cn(
+                  "w-10 h-10 relative flex-shrink-0",
+                  isFeedView && "size-6"
+                )}
+              >
                 {post.bank?.logo_url ? (
                   <img
                     src={post.bank.logo_url}
@@ -168,7 +150,12 @@ export function PostCard({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium text-lg">
+                  <span
+                    className={cn(
+                      "font-medium text-lg",
+                      isFeedView && "text-md"
+                    )}
+                  >
                     {post.bank?.name || "Banque"}
                   </span>
                   <span className="text-xs text-muted-foreground ml-1">
@@ -186,26 +173,44 @@ export function PostCard({
           <div className="flex items-center gap-2">
             <Badge
               className={cn(
-                "text-sm px-3 py-1 rounded-full font-medium",
-                categoryColors[post.category] || categoryColors.general
+                "text-xs px-3 py-2 rounded-lg font-medium",
+                categoryColors[post.category] || categoryColors.general,
+                isBlurred && "blur select-none pointer-events-none opacity-60"
               )}
             >
               {getCategoryLabel(post.category)}
             </Badge>
-            <Badge variant="outline" className="flex items-center gap-1">
-              <MapPin className="h-3 w-3" />
+            <Badge
+              variant="outline"
+              className={cn(
+                "flex items-center py-2 px-3 gap-1 text-sm font-semibold rounded-lg",
+                isBlurred && "blur select-none pointer-events-none opacity-80"
+              )}
+            >
               {getCityLabel(post.city)}
             </Badge>
           </div>
         </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="pt-0">
-        <div className={cn("space-y-3", isBlurred && "relative")}>
+      <div className="pt-0 my-0 py-0 pb-3">
+        <div className={cn("space-y-2", isBlurred && "relative")}>
           {expanded ? (
-            <h1 className="font-bold text-2xl">{post.title}</h1>
+            <h1
+              className={cn(
+                "font-medium text-2xl",
+                isBlurred && "blur select-none pointer-events-none"
+              )}
+            >
+              {post.title}
+            </h1>
           ) : (
-            <h3 className="font-semibold text-lg hover:text-primary transition-colors cursor-pointer">
+            <h3
+              className={cn(
+                "font-medium text-[1.4rem] hover:text-primary transition-colors cursor-pointer",
+                isBlurred && "blur select-none pointer-events-none opacity-80"
+              )}
+            >
               {post.title}
             </h3>
           )}
@@ -223,11 +228,14 @@ export function PostCard({
 
                 if (images.length === 1) {
                   return (
-                    <div className="relative aspect-video rounded-lg overflow-hidden">
+                    <div className="relative size-fit rounded-lg overflow-hidden">
                       <img
                         src={images[0].file_url}
                         alt="Post media"
-                        className="object-cover w-full h-full"
+                        className={cn(
+                          "object-cover size-[50%] rounded-lg",
+                          isBlurred && "blur opacity-80"
+                        )}
                       />
                     </div>
                   );
@@ -244,7 +252,10 @@ export function PostCard({
                           <img
                             src={image.file_url}
                             alt={`Post media ${index + 1}`}
-                            className="object-cover w-full h-full"
+                            className={cn(
+                              "object-cover w-full h-full",
+                              isBlurred && "blur opacity-80"
+                            )}
                           />
                         </div>
                       ))}
@@ -259,7 +270,10 @@ export function PostCard({
                         <img
                           src={images[0].file_url}
                           alt="Post media 1"
-                          className="object-cover w-full h-full"
+                          className={cn(
+                            "object-cover w-full h-full",
+                            isBlurred && "blur opacity-80"
+                          )}
                         />
                       </div>
                       <div className="grid grid-rows-2 gap-2">
@@ -271,7 +285,10 @@ export function PostCard({
                             <img
                               src={image.file_url}
                               alt={`Post media ${index + 2}`}
-                              className="object-cover w-full h-full"
+                              className={cn(
+                                "object-cover w-full h-full",
+                                isBlurred && "blur opacity-80"
+                              )}
                             />
                           </div>
                         ))}
@@ -287,7 +304,10 @@ export function PostCard({
                       <img
                         src={images[0].file_url}
                         alt="Post media 1"
-                        className="object-cover w-full h-full"
+                        className={cn(
+                          "object-cover w-full h-full",
+                          isBlurred && "blur opacity-80"
+                        )}
                       />
                     </div>
                     <div className="grid grid-rows-2 gap-2">
@@ -299,7 +319,10 @@ export function PostCard({
                           <img
                             src={image.file_url}
                             alt={`Post media ${index + 2}`}
-                            className="object-cover w-full h-full"
+                            className={cn(
+                              "object-cover w-full h-full",
+                              isBlurred && "blur opacity-80"
+                            )}
                           />
                         </div>
                       ))}
@@ -308,7 +331,10 @@ export function PostCard({
                           <img
                             src={images[3].file_url}
                             alt="Post media 4"
-                            className="object-cover w-full h-full opacity-60"
+                            className={cn(
+                              "object-cover w-full h-full opacity-60",
+                              isBlurred && "blur opacity-40"
+                            )}
                           />
                           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                             <span className="text-white text-lg font-semibold">
@@ -337,7 +363,10 @@ export function PostCard({
                         href={file.file_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex flex-col items-center gap-2 group"
+                        className={cn(
+                          "flex flex-col items-center gap-2 group",
+                          isBlurred && "blur opacity-80 pointer-events-none"
+                        )}
                       >
                         <div className="relative size-[4rem] bg-white rounded-lg shadow-sm border border-gray-200 flex items-center justify-center group-hover:shadow-md transition-shadow">
                           {file.file_name?.toLowerCase().endsWith(".pdf") && (
@@ -362,18 +391,28 @@ export function PostCard({
           )}
 
           {/* Content */}
-          <div
-            className={cn(
-              "prose prose-sm max-w-none",
-              isBlurred && "blur-sm select-none pointer-events-none"
+          <div className="relative">
+            <div
+              className={cn(
+                "prose prose-sm max-w-none text-sm",
+                isFeedView
+                  ? "text-muted-foreground/60 max-h-[10rem] overflow-hidden"
+                  : "text-foreground/90",
+                isBlurred &&
+                  "blur select-none opacity-80 pointer-events-none text-foreground/80 [text-shadow:none]"
+              )}
+              dangerouslySetInnerHTML={{ __html: displayContent }}
+            />
+            {/* Fadeout gradient - only in feed view and when not blurred */}
+            {isFeedView && !isBlurred && (
+              <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none" />
             )}
-            dangerouslySetInnerHTML={{ __html: displayContent }}
-          />
+          </div>
 
           {/* Blur overlay for anonymous users */}
           {isBlurred && (
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/90 flex items-end justify-center pb-4">
-              <Button asChild>
+            <div className="absolute inset-0 flex items-end justify-center pb-4">
+              <Button asChild variant="outline">
                 <Link href="/auth/signup">
                   <Eye className="mr-2 h-4 w-4" />
                   Voir plus
@@ -382,80 +421,34 @@ export function PostCard({
             </div>
           )}
         </div>
-      </CardContent>
+      </div>
 
       {showActions && (
-        <CardFooter className="pt-3">
+        <div className="pt-3 my-0 py-0">
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-2">
-              {/* Voting - styled similar to screenshot */}
-              <div className="flex items-center bg-orange-500 text-white rounded-full px-3 py-1 gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleVote(1)}
-                  disabled={!isAuthenticated || isVoting}
-                  className={cn(
-                    "h-6 w-6 p-0 text-white hover:bg-orange-600 hover:text-white",
-                    userVote === 1 && "bg-orange-600"
-                  )}
-                  title={
-                    !isAuthenticated
-                      ? "Connectez-vous pour voter"
-                      : "Voter pour"
-                  }
-                >
-                  <Icon
-                    icon={
-                      userVote === 1
-                        ? "tabler:arrow-big-up-filled"
-                        : "tabler:arrow-big-up"
-                    }
-                    className="h-4 w-4"
-                  />
-                </Button>
-                <span className="text-sm font-medium px-1">{netVotes}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleVote(-1)}
-                  disabled={!isAuthenticated || isVoting}
-                  className={cn(
-                    "h-6 w-6 p-0 text-white hover:bg-orange-600 hover:text-white",
-                    userVote === -1 && "bg-orange-600"
-                  )}
-                  title={
-                    !isAuthenticated
-                      ? "Connectez-vous pour voter"
-                      : "Voter contre"
-                  }
-                >
-                  <Icon
-                    icon={
-                      userVote === -1
-                        ? "tabler:arrow-big-down-filled"
-                        : "tabler:arrow-big-down"
-                    }
-                    className="h-4 w-4"
-                  />
-                </Button>
-              </div>
-
-              {/* Comments */}
-              <Button
-                variant="ghost"
-                size="sm"
-                asChild
-                className="bg-foreground/10 hover:bg-foreground/20 rounded-full px-3"
-              >
-                <Link
-                  href={`/post/${post.id}#comments`}
-                  className="flex items-center gap-2"
-                >
-                  <Icon icon="iconamoon:comment-fill" className="h-4 w-4" />
-                  <span>{post.comments_count}</span>
-                </Link>
-              </Button>
+              {/* Impressions - replacing votes */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center bg-blue-50 text-blue-500 rounded-full px-3 py-1 gap-2 cursor-help">
+                      <Icon icon="mdi:eye" className="h-4 w-4" />
+                      <span className="text-sm font-medium">
+                        {post.impressions}
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>
+                      {post.impressions}{" "}
+                      {post.impressions === 1
+                        ? "utilisateur a"
+                        : "utilisateurs ont"}{" "}
+                      consulté cet entretien
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
 
               {/* Share */}
               <DropdownMenu open={shareOpen} onOpenChange={setShareOpen}>
@@ -463,10 +456,15 @@ export function PostCard({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="bg-foreground/10 hover:bg-foreground/20 rounded-full px-3 gap-2"
+                    disabled={isBlurred}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    className="bg-muted-foreground/5 hover:bg-muted-foreground/10 cursor-pointer rounded-full px-3 gap-2"
                   >
                     <Icon icon="majesticons:share" className="h-4 w-4" />
-                    <span>Partager</span>
+                    <span className="text-sm font-normal">Partager</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-auto p-2">
@@ -483,10 +481,32 @@ export function PostCard({
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              {/* Report */}
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={isBlurred}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setReportOpen(true);
+                }}
+                className="bg-muted-foreground/5 hover:bg-muted-foreground/10 cursor-pointer rounded-full px-3 gap-2"
+                title="Signaler cette publication"
+              >
+                <Icon icon="material-symbols:flag" className="h-4 w-4" />
+                <span className="text-sm font-normal">Signaler</span>
+              </Button>
             </div>
 
             {/* User info on the right */}
-            <div className="flex items-center gap-2">
+            <div
+              className={cn(
+                "flex items-center gap-2",
+                isBlurred && "blur select-none pointer-events-none"
+              )}
+            >
               <span className="text-xs text-muted-foreground">par</span>
               <Link
                 href={`/profile/${post.user?.id}`}
@@ -507,8 +527,16 @@ export function PostCard({
               </Link>
             </div>
           </div>
-        </CardFooter>
+        </div>
       )}
-    </Card>
+
+      {/* Report Dialog */}
+      <ReportDialog
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        postId={post.id}
+        postTitle={post.title}
+      />
+    </div>
   );
 }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -9,11 +10,10 @@ import {
   LogOut,
   Settings,
   PlusCircle,
-  Filter,
   Sparkles,
   X,
-  Tag,
   Loader2,
+  ChevronDownIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -21,9 +21,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -31,7 +28,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,7 +47,8 @@ import {
 } from "@/lib/types";
 import { signOutAction } from "@/lib/actions/auth";
 import { fetchBanks } from "@/lib/services/banks";
-import { CITIES } from "@/lib/utils";
+import { CITIES, cn } from "@/lib/utils";
+import { Icon } from "@iconify/react";
 
 interface HeaderProps {
   isAuthenticated: boolean;
@@ -64,18 +61,138 @@ interface HeaderProps {
   popularTags?: string[];
 }
 
-export function Header({
-  isAuthenticated,
-  profile,
-  onSearch,
-  popularTags = [],
-}: HeaderProps) {
+interface BankMultiSelectProps {
+  banks: Bank[];
+  selectedBanks: string[];
+  onBankToggle: (bankId: string) => void;
+  isLoading: boolean;
+  onClear: () => void;
+}
+
+function BankMultiSelect({
+  banks,
+  selectedBanks,
+  onBankToggle,
+  isLoading,
+  onClear,
+}: BankMultiSelectProps) {
+  const [open, setOpen] = useState(false);
+
+  const selectedBankData = banks.filter((bank) =>
+    selectedBanks.includes(bank.id)
+  );
+
+  const renderTrigger = () => {
+    if (selectedBanks.length === 0) {
+      return <span className="text-muted-foreground text-sm">Banques</span>;
+    }
+
+    const displayBanks = selectedBankData.slice(0, 2);
+    const remainingCount = selectedBankData.length - 2;
+
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium">Banques</span>
+        <div className="h-4 w-px bg-border" />
+        <div className="flex items-center gap-1">
+          {displayBanks.map((bank) => (
+            <div
+              key={bank.id}
+              className="w-4 h-4 rounded-full bg-muted flex items-center justify-center overflow-hidden"
+            >
+              <img
+                src={bank.logo_url}
+                alt={bank.name}
+                className="w-full h-full object-contain"
+              />
+            </div>
+          ))}
+          {remainingCount > 0 && (
+            <div className="w-4 h-4 rounded-full bg-primary/10 flex items-center justify-center">
+              <span className="text-xs font-medium text-primary">
+                +{remainingCount}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-2 px-3">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span className="text-sm text-muted-foreground ml-2">
+          Chargement...
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <Select open={open} onOpenChange={setOpen}>
+      <SelectTrigger
+        className="w-fit justify-between py-2 px-3 rounded-lg shadow-soft hover:cursor-pointer hover:bg-muted"
+        onClick={() => setOpen(!open)}
+      >
+        {renderTrigger()}
+        <ChevronDownIcon className="size-4 opacity-50" />
+      </SelectTrigger>
+      <SelectContent className="w-fit">
+        <div className="max-h-[300px] overflow-y-auto">
+          {banks.map((bank) => {
+            const isSelected = selectedBanks.includes(bank.id);
+            return (
+              <div
+                key={bank.id}
+                className="relative flex w-full cursor-pointer items-center gap-3 rounded-sm py-1.5 px-2 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
+                onClick={() => onBankToggle(bank.id)}
+              >
+                <div className="flex items-center justify-center w-4 h-4 border border-muted-foreground/30 rounded-sm">
+                  {isSelected && (
+                    <Icon icon="mdi:check" className="h-3 w-3 text-primary" />
+                  )}
+                </div>
+                <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <img
+                    src={bank.logo_url}
+                    alt={bank.name}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <span className="flex-1 text-sm font-medium">{bank.name}</span>
+              </div>
+            );
+          })}
+        </div>
+        {selectedBanks.length > 0 && (
+          <>
+            <div className="border-t my-1" />
+            <div className="p-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onClear}
+                className="w-full text-xs"
+              >
+                <X className="h-3 w-3 mr-1" />
+                Effacer
+              </Button>
+            </div>
+          </>
+        )}
+      </SelectContent>
+    </Select>
+  );
+}
+
+export function Header({ isAuthenticated, profile, onSearch }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<SearchFilters>({
     sortBy: "recent",
   });
   const [isNaturalLanguage, setIsNaturalLanguage] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [banks, setBanks] = useState<Bank[]>([]);
   const [banksLoading, setBanksLoading] = useState(true);
@@ -280,14 +397,14 @@ export function Header({
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-muted bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 pr-7 w-full border-b border-muted bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container pl-10">
         {/* Main Header Row */}
-        <div className="flex h-14 items-center gap-4">
+        <div className="flex h-16 items-center gap-4 py-3">
           {/* Search Bar */}
-          <div className="flex-1 max-w-xl">
+          <div className="flex-1 max-w-md">
             <form onSubmit={handleSearch} className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
                 placeholder={
@@ -295,58 +412,140 @@ export function Header({
                     ? "Posez votre question en langage naturel..."
                     : "Rechercher des discussions..."
                 }
-                className="pl-10 pr-12 h-10 rounded-full text-sm"
+                className="pl-10 pr-12 h-12 py-3 rounded-2xl shadow-soft text-sm placeholder:text-muted-foreground/50"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 disabled={isSearching}
               />
 
+              {/* Natural Language Toggle - Absolute positioned */}
+              <button
+                type="button"
+                onClick={() => handleNaturalLanguageToggle(!isNaturalLanguage)}
+                className={`absolute right-3 cursor-pointer top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
+                  isNaturalLanguage
+                    ? "bg-purple-500 text-white"
+                    : "bg-muted text-muted-foreground hover:bg-muted-foreground/20"
+                }`}
+              >
+                <Icon icon="octicon:sparkle-fill-16" className="size-4" />
+              </button>
+
               {/* Loading indicator */}
               {isSearching && (
-                <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                <div className="absolute right-10 top-1/2 transform -translate-y-1/2">
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 </div>
               )}
             </form>
           </div>
 
-          {/* AI Toggle */}
-          <div className="flex items-center space-x-2">
-            <Sparkles className="h-4 w-4 text-muted-foreground" />
-            <Switch
-              checked={isNaturalLanguage}
-              onCheckedChange={handleNaturalLanguageToggle}
-              className="scale-90"
+          {/* Filter Selects */}
+          <div className="flex items-center gap-3">
+            {/* Bank Select */}
+            <BankMultiSelect
+              banks={banks}
+              selectedBanks={filters.banks || []}
+              onBankToggle={(bankId) => {
+                const currentBanks = filters.banks || [];
+                const newBanks = currentBanks.includes(bankId)
+                  ? currentBanks.filter((id) => id !== bankId)
+                  : [...currentBanks, bankId];
+                handleFilterChange({ ...filters, banks: newBanks });
+              }}
+              isLoading={banksLoading}
+              onClear={() => handleFilterChange({ ...filters, banks: [] })}
             />
-          </div>
 
-          {/* Search Controls Row */}
-          <div className="flex items-center gap-2">
-            {/* Filters Toggle */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowFilters(!showFilters)}
-              className="gap-1 h-8"
+            {/* Category Select */}
+            <Select
+              value={filters.category || "all"}
+              onValueChange={(value) =>
+                handleFilterChange({
+                  ...filters,
+                  category:
+                    value === "all" ? undefined : (value as PostCategory),
+                })
+              }
             >
-              <Filter className="h-3 w-3" />
-              {hasActiveFilters && (
-                <Badge
-                  variant="secondary"
-                  className="h-4 w-4 p-0 flex items-center justify-center text-xs"
-                >
-                  {
-                    Object.keys(filters).filter((key) => {
-                      const value = filters[key as keyof SearchFilters];
-                      return Array.isArray(value) ? value.length > 0 : !!value;
-                    }).length
-                  }
-                </Badge>
-              )}
-            </Button>
+              <SelectTrigger className="w-fit py-2 px-3 rounded-lg shadow-soft hover:cursor-pointer hover:bg-muted">
+                <SelectValue
+                  placeholder="Catégories"
+                  className={cn(
+                    !filters.category && "text-muted-foreground/70"
+                  )}
+                />
+                <ChevronDownIcon className="size-4 opacity-50" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Catégories</SelectItem>
+                {Object.entries(POST_CATEGORIES).map(([key, label]) => (
+                  <SelectItem key={key} value={key}>
+                    {String(label)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* City Select */}
+            <Select
+              value={filters.city || "all"}
+              onValueChange={(value) =>
+                handleFilterChange({
+                  ...filters,
+                  city: value === "all" ? undefined : value,
+                })
+              }
+            >
+              <SelectTrigger className="w-fit py-2 px-3 rounded-lg shadow-soft hover:cursor-pointer hover:bg-muted">
+                <SelectValue
+                  placeholder="Villes"
+                  className={cn(!filters.city && "text-muted-foreground/70")}
+                />
+                <ChevronDownIcon className="size-4 opacity-50" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Villes</SelectItem>
+                {Object.entries(CITIES).map(([key, label]) => (
+                  <SelectItem key={key} value={key}>
+                    {String(label)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Sort/Time Select */}
+            <Select
+              value={filters.sortBy || "recent"}
+              onValueChange={(value) =>
+                handleFilterChange({
+                  ...filters,
+                  sortBy: value as "recent" | "popular" | "comments",
+                })
+              }
+            >
+              <SelectTrigger className="w-fit py-2 px-3 rounded-lg shadow-soft hover:cursor-pointer hover:bg-muted">
+                <SelectValue
+                  placeholder="Trier"
+                  className={cn(
+                    filters.sortBy === "recent" && "text-muted-foreground/70"
+                  )}
+                />
+                <ChevronDownIcon className="size-4 opacity-50" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recent">Récent</SelectItem>
+                <SelectItem value="popular">Populaire</SelectItem>
+                <SelectItem value="comments">Commenté</SelectItem>
+              </SelectContent>
+            </Select>
 
             {/* Clear Filters */}
-            {hasActiveFilters && (
+            {(filters.category ||
+              filters.city ||
+              filters.banks?.length ||
+              (filters.sortBy && filters.sortBy !== "recent") ||
+              searchQuery.trim()) && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -451,242 +650,6 @@ export function Header({
             )}
           </div>
         </div>
-
-        {/* Advanced Filters Panel */}
-        <Collapsible open={showFilters}>
-          <CollapsibleContent>
-            <div className="border-t border-muted/50 bg-muted/20 py-3">
-              <Card>
-                <CardContent className="p-3">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {/* Category Filter */}
-                    <div className="space-y-1">
-                      <Label className="text-xs">Catégorie</Label>
-                      <Select
-                        value={filters.category || "all"}
-                        onValueChange={(value: string) =>
-                          handleFilterChange({
-                            ...filters,
-                            category:
-                              value === "all"
-                                ? undefined
-                                : (value as PostCategory),
-                          })
-                        }
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">
-                            Toutes les catégories
-                          </SelectItem>
-                          {Object.entries(POST_CATEGORIES).map(
-                            ([key, label]) => (
-                              <SelectItem key={key} value={key}>
-                                {String(label)}
-                              </SelectItem>
-                            )
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Type Filter */}
-                    <div className="space-y-1">
-                      <Label className="text-xs">Type</Label>
-                      <Select
-                        value={filters.type || "all"}
-                        onValueChange={(value: string) =>
-                          handleFilterChange({
-                            ...filters,
-                            type:
-                              value === "all" ? undefined : (value as PostType),
-                          })
-                        }
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Tous les types</SelectItem>
-                          {Object.entries(POST_TYPES).map(([key, label]) => (
-                            <SelectItem key={key} value={key}>
-                              {String(label)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Sort Filter */}
-                    <div className="space-y-1">
-                      <Label className="text-xs">Trier par</Label>
-                      <Select
-                        value={filters.sortBy || "recent"}
-                        onValueChange={(value) =>
-                          handleFilterChange({
-                            ...filters,
-                            sortBy: value as "recent" | "popular" | "comments",
-                          })
-                        }
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="recent">Récent</SelectItem>
-                          <SelectItem value="popular">Populaire</SelectItem>
-                          <SelectItem value="comments">Commenté</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* City Filter */}
-                    <div className="space-y-1">
-                      <Label className="text-xs">Ville</Label>
-                      <Select
-                        value={filters.city || "all"}
-                        onValueChange={(value: string) =>
-                          handleFilterChange({
-                            ...filters,
-                            city: value === "all" ? undefined : value,
-                          })
-                        }
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Toutes les villes</SelectItem>
-                          {Object.entries(CITIES).map(([key, label]) => (
-                            <SelectItem key={key} value={key}>
-                              {String(label)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Tags */}
-                    <div className="space-y-1">
-                      <Label className="text-xs">Tags sélectionnés</Label>
-                      <div className="flex flex-wrap gap-1 min-h-[32px] items-center">
-                        {(filters.tags || []).length > 0 ? (
-                          (filters.tags || []).map((tag) => (
-                            <Badge
-                              key={tag}
-                              variant="secondary"
-                              className="cursor-pointer hover:bg-destructive hover:text-destructive-foreground text-xs h-5"
-                              onClick={() => removeTagFilter(tag)}
-                            >
-                              {tag}
-                              <X className="h-2 w-2 ml-1" />
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
-                            Aucun tag
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Banks Section */}
-                  <div className="mt-3 pt-3 border-t">
-                    <Label className="text-xs text-muted-foreground">
-                      Banques sélectionnées:
-                    </Label>
-                    <div className="flex flex-wrap gap-1 mt-2 mb-3">
-                      {(filters.banks || []).length > 0 ? (
-                        (filters.banks || []).map((bankId) => {
-                          const logoUrl = getBankLogo(bankId);
-                          return (
-                            <Badge
-                              key={bankId}
-                              variant="secondary"
-                              className="cursor-pointer hover:bg-destructive hover:text-destructive-foreground text-xs h-6 gap-1"
-                              onClick={() => removeBankFilter(bankId)}
-                            >
-                              {logoUrl && (
-                                <div className="w-3 h-3 relative">
-                                  <img
-                                    src={logoUrl}
-                                    alt=""
-                                    className="object-contain rounded"
-                                  />
-                                </div>
-                              )}
-                              {getBankName(bankId)}
-                              <X className="h-2 w-2" />
-                            </Badge>
-                          );
-                        })
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          Aucune banque sélectionnée
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Available Banks */}
-                    {!banksLoading && banks.length > 0 && (
-                      <>
-                        <Label className="text-xs text-muted-foreground">
-                          Banques disponibles:
-                        </Label>
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {banks
-                            .filter((bank) => !filters.banks?.includes(bank.id))
-                            .map((bank) => (
-                              <Badge
-                                key={bank.id}
-                                variant="outline"
-                                className="cursor-pointer hover:bg-primary hover:text-primary-foreground text-xs h-6 gap-1"
-                                onClick={() => addBankFilter(bank.id)}
-                              >
-                                <div className="w-3 h-3 relative">
-                                  <img
-                                    src={bank.logo_url}
-                                    alt={bank.name}
-                                    className="object-contain rounded"
-                                  />
-                                </div>
-                                {bank.name}
-                              </Badge>
-                            ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Popular Tags */}
-                  {popularTags.length > 0 && (
-                    <div className="mt-3 pt-3 border-t">
-                      <Label className="text-xs text-muted-foreground">
-                        Tags populaires:
-                      </Label>
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {popularTags.slice(0, 12).map((tag) => (
-                          <Badge
-                            key={tag}
-                            variant="outline"
-                            className="cursor-pointer hover:bg-primary hover:text-primary-foreground text-xs h-5"
-                            onClick={() => addTagFilter(tag)}
-                          >
-                            <Tag className="h-2 w-2 mr-1" />
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
       </div>
     </header>
   );

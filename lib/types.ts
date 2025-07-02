@@ -61,6 +61,8 @@ export interface Post {
   upvotes: number;
   downvotes: number;
   comments_count: number;
+  impressions: number;
+  corrected: boolean;
   created_at: string;
   updated_at: string;
   city: string;

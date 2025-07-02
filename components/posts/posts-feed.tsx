@@ -144,8 +144,8 @@ export function PostsFeed({
   if (isLoading) {
     console.log("⏳ PostsFeed showing loading state");
     return (
-      <div className="space-y-4">
-        {Array.from({ length: 3 }).map((_, i) => (
+      <div className="space-y-4 pl-5">
+        {Array.from({ length: 10 }).map((_, i) => (
           <PostSkeleton key={i} />
         ))}
       </div>
@@ -200,7 +200,7 @@ export function PostsFeed({
       <div className="space-y-4">
         {posts.map((post, index) => {
           // Show blurred content for non-public posts to anonymous users
-          const shouldBlur = !isAuthenticated && !post.is_public;
+          const shouldBlur = !isAuthenticated;
 
           return (
             <motion.div
@@ -220,6 +220,7 @@ export function PostsFeed({
                 className="transform scale-95"
                 isAuthenticated={isAuthenticated}
                 profile={profile}
+                isFeedView={true}
               />
             </motion.div>
           );
