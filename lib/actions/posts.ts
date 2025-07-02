@@ -18,6 +18,7 @@ interface CreatePostData {
   tags: string[];
   is_public: boolean;
   userId: string;
+  city: string;
   mediaFiles?: UploadResult[];
   documentFiles?: UploadResult[];
 }
