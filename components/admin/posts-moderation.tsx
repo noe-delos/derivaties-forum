@@ -312,7 +312,7 @@ export function PostsModeration() {
                 <div className="flex items-center gap-2 pt-2 border-t">
                   <Button variant="outline" size="sm" asChild>
                     <a
-                      href={`/post/${post.id}`}
+                      href={`/forum/post/${post.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
                     >

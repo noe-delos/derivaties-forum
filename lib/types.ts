@@ -16,8 +16,12 @@ export type NotificationType =
   | "post_approved"
   | "post_rejected"
   | "comment_on_post"
-  | "upvote_received";
+  | "upvote_received"
+  | "correction_submitted"
+  | "correction_approved"
+  | "correction_rejected";
 export type FileType = "image" | "video" | "document";
+export type CorrectionStatus = "pending" | "approved" | "rejected";
 
 // Database table interfaces
 export interface User {
@@ -121,6 +125,25 @@ export interface Notification {
   comment_id?: string;
   is_read: boolean;
   created_at: string;
+}
+
+export interface Correction {
+  id: string;
+  post_id: string;
+  user_id: string;
+  content: string;
+  status: CorrectionStatus;
+  moderator_id?: string;
+  moderator_note?: string;
+  tokens_awarded: number;
+  is_selected: boolean;
+  created_at: string;
+  updated_at: string;
+
+  // Relations
+  user?: User;
+  post?: Post;
+  moderator?: User;
 }
 
 // UI Component Props

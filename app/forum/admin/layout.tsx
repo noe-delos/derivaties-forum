@@ -14,7 +14,7 @@ export default async function AdminLayout({
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/auth/login?redirectTo=/admin");
+    redirect("/auth/login?redirectTo=/forum/admin");
   }
 
   // Get user profile to check role
@@ -25,7 +25,7 @@ export default async function AdminLayout({
     .single();
 
   if (!profile || (profile.role !== "moderator" && profile.role !== "admin")) {
-    redirect("/");
+    redirect("/forum");
   }
 
   return (

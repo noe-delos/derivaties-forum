@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { User, LogOut, Settings, PlusCircle } from "lucide-react";
+import { User, LogOut, Settings, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -18,22 +18,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { User as UserType } from "@/lib/types";
 import { signOutAction } from "@/lib/actions/auth";
-import { NotificationsPopover } from "@/components/notifications/notifications-popover";
 
-interface HeaderProps {
+interface TrackerHeaderProps {
   isAuthenticated: boolean;
   profile: UserType | null;
-  popularTags?: string[];
 }
 
-export function Header({ isAuthenticated, profile }: HeaderProps) {
+export function TrackerHeader({ isAuthenticated, profile }: TrackerHeaderProps) {
   const router = useRouter();
 
   const handleSignOut = async () => {
     try {
       toast.loading("Déconnexion en cours...");
 
-      // Use server action for signout
       const result = await signOutAction();
 
       toast.dismiss();
@@ -65,30 +62,21 @@ export function Header({ isAuthenticated, profile }: HeaderProps) {
   return (
     <header className="sticky top-0 z-50 pr-7 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container pl-10">
-        {/* Main Header Row */}
         <div className="flex h-16 items-center gap-4 py-3">
-          {/* Title */}
           <div className="flex-1 pt-4">
             <h1 className="text-2xl font-medium text-foreground">
-              Forum entretiens.
+              Tracker stages.
             </h1>
-            <h3 className=" font-normal text-xs text-foreground/30">
-              Le forum BridgeYou des entretiens en finance.
+            <h3 className="font-normal text-xs text-foreground/30">
+              Suivez vos candidatures et stages en finance.
             </h3>
           </div>
 
-          {/* Right side actions */}
           <div className="flex items-center gap-2 ml-auto">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/forum/create">
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Publier
-              </Link>
+            <Button variant="ghost" size="sm" className="gap-2">
+              <Plus className="h-4 w-4" />
+              Ajouter une candidature
             </Button>
-
-            {isAuthenticated && profile && (
-              <NotificationsPopover userId={profile.id} />
-            )}
 
             {isAuthenticated ? (
               <DropdownMenu>

@@ -7,10 +7,9 @@ import {
 } from "@tanstack/react-query";
 
 import { PostCard } from "@/components/posts/post-card";
-import { CommentList } from "@/components/comments/comment-list";
+import { CorrectionsSection } from "@/components/corrections/corrections-section";
 import { BackButton } from "@/components/ui/back-button";
 import { fetchPost } from "@/lib/services/posts";
-import { fetchComments } from "@/lib/services/comments";
 import { createClient } from "@/utils/supabase/server";
 import { User as UserType } from "@/lib/types";
 
@@ -51,17 +50,7 @@ export default async function PostPage({ params }: PostPageProps) {
       queryFn: () => fetchPost(id, isAuthenticated),
     });
 
-    // Prefetch the first page of comments
-    await queryClient.prefetchInfiniteQuery({
-      queryKey: ["comments", id, isAuthenticated],
-      queryFn: ({ pageParam = 0 }) =>
-        fetchComments({
-          postId: id,
-          pageParam,
-          isAuthenticated,
-        }),
-      initialPageParam: 0,
-    });
+    // Note: We're now using corrections instead of comments
 
     // Get the post data to check if it exists
     const post = await fetchPost(id, isAuthenticated);
@@ -89,8 +78,12 @@ export default async function PostPage({ params }: PostPageProps) {
             profile={profile}
           />
 
-          {/* Comments */}
-          <CommentList postId={id} />
+          {/* Corrections */}
+          <CorrectionsSection 
+            post={post} 
+            user={profile} 
+            isAuthenticated={isAuthenticated} 
+          />
         </div>
       </HydrationBoundary>
     );

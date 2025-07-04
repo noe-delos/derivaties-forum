@@ -40,65 +40,73 @@ interface AppSidebarProps {
 
 const navigationItems = [
   {
-    title: "Accueil",
-    url: "/",
-    icon: "mage:home-fill",
+    title: "Forum",
+    url: "/forum",
+    icon: "solar:dialog-bold",
   },
   {
-    title: "Tendances",
-    url: "/populaire",
-    icon: "fluent:fire-24-filled",
+    title: "Tracker",
+    url: "/tracker",
+    icon: "lucide:radar",
+  },
+  {
+    title: "Entreprises",
+    url: "/forum/populaire",
+    icon: "mingcute:building-4-fill",
+    comingSoon: true,
+  },
+  {
+    title: "Salaires",
+    url: "/forum/populaire",
+    icon: "tdesign:money-filled",
+    comingSoon: true,
+  },
+  {
+    title: "CVs",
+    url: "/forum/populaire",
+    icon: "pepicons-pencil:cv",
+    comingSoon: true,
   },
 ];
 
 const adminItems = [
   {
     title: "Analytics",
-    url: "/admin/analytics",
+    url: "/forum/admin/analytics",
     icon: "mdi-light:chart-line",
   },
   {
     title: "Posts",
-    url: "/admin/posts",
+    url: "/forum/admin/posts",
     icon: "mdi-light:file-document",
   },
   {
     title: "Comments",
-    url: "/admin/comments",
+    url: "/forum/admin/comments",
     icon: "mdi-light:comment",
   },
   {
     title: "Users",
-    url: "/admin/users",
+    url: "/forum/admin/users",
     icon: "mdi-light:account-group",
   },
   {
     title: "Mods",
-    url: "/admin/moderators",
+    url: "/forum/admin/moderators",
     icon: "mdi-light:shield-account",
   },
 ];
 
 const categoryItems = [
   {
-    title: "Entretiens S&T",
+    title: "Profile",
     key: "entretien_sales_trading",
-    icon: "bi:camera-video-fill",
+    icon: "fluent:person-20-filled",
   },
   {
-    title: "École",
+    title: "Notifications",
     key: "conseils_ecole",
-    icon: "basil:university-solid",
-  },
-  {
-    title: "Stages",
-    key: "stage_summer_graduate",
-    icon: "solar:suitcase-bold",
-  },
-  {
-    title: "Quant & HF",
-    key: "quant_hedge_funds",
-    icon: "solar:chart-bold",
+    icon: "tabler:bell-filled",
   },
 ];
 
@@ -282,12 +290,12 @@ export function AppSidebar({ isAuthenticated, profile }: AppSidebarProps) {
       params.delete("banks");
     }
 
-    const url = `/${params.toString() ? `?${params.toString()}` : ""}`;
+    const url = `/forum${params.toString() ? `?${params.toString()}` : ""}`;
     router.push(url, { scroll: false });
   };
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" className="w-[15rem]">
       {/* Logo Header */}
       <SidebarHeader>
         <div
@@ -295,17 +303,14 @@ export function AppSidebar({ isAuthenticated, profile }: AppSidebarProps) {
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
-          <Link href="/" className="flex items-center justify-between">
-            <Image
+          <Link href="/forum" className="flex items-center justify-between">
+            <img
               src={isCollapsed ? "/logo-small.png" : "/logo.png"}
               alt="Logo"
-              width={isCollapsed ? 32 : 120}
-              height={isCollapsed ? 32 : 40}
               className={cn(
-                "transition-all duration-200",
-                isCollapsed ? "h-8 w-8" : "h-8 w-auto"
+                "transition-all duration-200 mx-auto",
+                isCollapsed ? "h-8 w-auto" : "h-20 w-auto"
               )}
-              priority
             />
 
             {/* Collapse/Expand trigger */}
@@ -343,7 +348,7 @@ export function AppSidebar({ isAuthenticated, profile }: AppSidebarProps) {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-muted-foreground/80">
+          <SidebarGroupLabel className="text-muted-foreground/80 pb-4">
             Navigation
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -351,17 +356,41 @@ export function AppSidebar({ isAuthenticated, profile }: AppSidebarProps) {
               {navigationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
-                    asChild
-                    isActive={pathname === item.url}
-                    className="px-6 py-3"
+                    asChild={!item.comingSoon}
+                    isActive={pathname === item.url && !item.comingSoon}
+                    className={cn(
+                      "px-3 pl-5 py-3",
+                      item.comingSoon && " cursor-not-allowed"
+                    )}
                   >
-                    <Link href={item.url}>
-                      <Icon
-                        icon={item.icon}
-                        className="size-7 text-foreground/30"
-                      />
-                      <span>{item.title}</span>
-                    </Link>
+                    {item.comingSoon ? (
+                      <Link
+                        href={""}
+                        className="flex flex-row items-center gap-3 justify-between w-full cursor-default"
+                      >
+                        <div className="flex items-center gap-2.5 opacity-30">
+                          <Icon
+                            icon={item.icon}
+                            className="size-4 text-foreground/50"
+                          />
+                          <span>{item.title}</span>
+                        </div>
+                        <Badge
+                          variant="destructive"
+                          className="text-[0.6rem] bg-red-600/10 text-red-600"
+                        >
+                          coming soon!
+                        </Badge>
+                      </Link>
+                    ) : (
+                      <Link href={item.url}>
+                        <Icon
+                          icon={item.icon}
+                          className="size-7 text-foreground/50"
+                        />
+                        <span>{item.title}</span>
+                      </Link>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -371,12 +400,12 @@ export function AppSidebar({ isAuthenticated, profile }: AppSidebarProps) {
 
         <SidebarGroup>
           <SidebarGroupLabel className="text-muted-foreground/80 pb-5">
-            Catégories
+            Paramètres
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="px-0">
               {categoryItems.map((item) => {
-                const isActive = pathname === `/categories/${item.key}`;
+                const isActive = pathname === `/forum/categories/${item.key}`;
 
                 return (
                   <SidebarMenuItem key={item.key} className="p-0">
@@ -385,11 +414,14 @@ export function AppSidebar({ isAuthenticated, profile }: AppSidebarProps) {
                       isActive={isActive}
                       className={"px-6 py-0"}
                     >
-                      <Link href={`/categories/${item.key}`} className="p-0">
+                      <Link
+                        href={`/forum/categories/${item.key}`}
+                        className="p-0"
+                      >
                         <span className="font-medium text-foreground flex flex-row items-center gap-3">
                           <Icon
                             icon={item.icon}
-                            className="text-foreground/30 size-4"
+                            className="text-foreground/50 size-4"
                           />
                           {item.title}
                         </span>
@@ -399,31 +431,6 @@ export function AppSidebar({ isAuthenticated, profile }: AppSidebarProps) {
                 );
               })}
             </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-muted-foreground/80 pb-3">
-            Banques
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <div className="px-2">
-              <BankMultiSelect
-                banks={banks}
-                selectedBanks={selectedBanks}
-                onBankToggle={toggleBankFilter}
-                isLoading={banksLoading}
-                onClear={() => {
-                  setSelectedBanks([]);
-                  const params = new URLSearchParams(searchParams.toString());
-                  params.delete("banks");
-                  const url = `/${
-                    params.toString() ? `?${params.toString()}` : ""
-                  }`;
-                  router.push(url, { scroll: false });
-                }}
-              />
-            </div>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

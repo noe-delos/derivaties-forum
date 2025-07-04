@@ -9,7 +9,7 @@ export default async function CreatePostPage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/auth/login");
+    redirect("/auth/login?redirectTo=/forum/create");
   }
 
   return (

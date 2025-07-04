@@ -214,7 +214,7 @@ export function AdminDashboard() {
                 </p>
               </div>
               <a
-                href="/admin/posts"
+                href="/forum/admin/posts"
                 className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-700 bg-orange-100 rounded-md hover:bg-orange-200 transition-colors"
               >
                 Modérer

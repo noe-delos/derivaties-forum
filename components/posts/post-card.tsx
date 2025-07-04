@@ -6,7 +6,7 @@ import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Icon } from "@iconify/react";
-import { Eye } from "lucide-react";
+import { Eye, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -86,7 +86,7 @@ export function PostCard({
 
   const handleCopyLink = async () => {
     await navigator.clipboard.writeText(
-      `${window.location.origin}/post/${post.id}`
+      `${window.location.origin}/forum/post/${post.id}`
     );
     toast.success("Lien copié dans le presse-papiers!");
     setShareOpen(false);
@@ -105,7 +105,7 @@ export function PostCard({
     }
 
     // Navigate to post detail
-    router.push(`/post/${post.id}`);
+    router.push(`/forum/post/${post.id}`);
   };
 
   const displayContent = expanded
@@ -117,7 +117,8 @@ export function PostCard({
   return (
     <div
       className={cn(
-        "w-full hover:border-muted-foreground/20 hover:cursor-pointer transition-colors p-7 border border-muted-foreground/10 shadow-soft rounded-[1.5rem]",
+        "w-full hover:border-muted-foreground/20 hover:cursor-pointer transition-colors p-7 border border-muted-foreground/10 shadow-soft rounded-[1.5rem] flex flex-col",
+        isFeedView && "h-fit min-h-[17rem] ", // Fixed height for grid view
         className
       )}
       onClick={handleCardClick}
@@ -171,11 +172,27 @@ export function PostCard({
 
           {/* Category on top right */}
           <div className="flex items-center gap-2">
+            {/* Correction checkmark */}
+            {post.corrected && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <div className="flex items-center justify-center w-8 h-8 bg-green-100 rounded-full">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Question corrigée</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
             <Badge
               className={cn(
                 "text-xs px-3 py-2 rounded-lg font-medium",
                 categoryColors[post.category] || categoryColors.general,
-                isBlurred && "blur select-none pointer-events-none opacity-60"
+                isBlurred && "blur select-none pointer-events-none opacity-60",
+                isFeedView && "text-[0.65rem] py-1"
               )}
             >
               {getCategoryLabel(post.category)}
@@ -184,7 +201,8 @@ export function PostCard({
               variant="outline"
               className={cn(
                 "flex items-center py-2 px-3 gap-1 text-sm font-semibold rounded-lg",
-                isBlurred && "blur select-none pointer-events-none opacity-80"
+                isBlurred && "blur select-none pointer-events-none opacity-80",
+                isFeedView && "text-[0.65rem] py-1"
               )}
             >
               {getCityLabel(post.city)}
@@ -193,8 +211,19 @@ export function PostCard({
         </div>
       </div>
 
-      <div className="pt-0 my-0 py-0 pb-3">
-        <div className={cn("space-y-2", isBlurred && "relative")}>
+      <div
+        className={cn(
+          "pt-0 my-0 py-0 pb-3",
+          isFeedView && "flex-1 flex flex-col"
+        )}
+      >
+        <div
+          className={cn(
+            "space-y-2",
+            isFeedView && "flex-1 flex flex-col",
+            isBlurred && "relative"
+          )}
+        >
           {expanded ? (
             <h1
               className={cn(
@@ -207,7 +236,8 @@ export function PostCard({
           ) : (
             <h3
               className={cn(
-                "font-medium text-[1.4rem] hover:text-primary transition-colors cursor-pointer",
+                "font-medium hover:text-primary transition-colors cursor-pointer",
+                isFeedView ? "text-lg" : "text-[1.4rem]", // Smaller title in feed view
                 isBlurred && "blur select-none pointer-events-none opacity-80"
               )}
             >
@@ -391,13 +421,13 @@ export function PostCard({
           )}
 
           {/* Content */}
-          <div className="relative">
+          <div className={cn("relative", isFeedView && "flex-1 flex flex-col")}>
             <div
               className={cn(
-                "prose prose-sm max-w-none text-sm",
+                "prose prose-sm max-w-none",
                 isFeedView
-                  ? "text-muted-foreground/60 max-h-[10rem] overflow-hidden"
-                  : "text-foreground/90",
+                  ? "text-muted-foreground/60 text-xs flex-1 overflow-hidden" // Smaller text in feed view
+                  : "text-foreground/90 text-sm",
                 isBlurred &&
                   "blur select-none opacity-80 pointer-events-none text-foreground/80 [text-shadow:none]"
               )}
@@ -405,7 +435,7 @@ export function PostCard({
             />
             {/* Fadeout gradient - only in feed view and when not blurred */}
             {isFeedView && !isBlurred && (
-              <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+              <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-background to-transparent pointer-events-none" />
             )}
           </div>
 
@@ -424,7 +454,12 @@ export function PostCard({
       </div>
 
       {showActions && (
-        <div className="pt-3 my-0 py-0">
+        <div
+          className={cn(
+            "pt-3 my-0 py-0",
+            isFeedView && "mt-auto flex-shrink-0"
+          )}
+        >
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-2">
               {/* Impressions - replacing votes */}
@@ -509,7 +544,7 @@ export function PostCard({
             >
               <span className="text-xs text-muted-foreground">par</span>
               <Link
-                href={`/profile/${post.user?.id}`}
+                href={`/forum/profile/${post.user?.id}`}
                 className="flex items-center gap-2 hover:opacity-80 transition-opacity"
               >
                 <Avatar className="h-6 w-6">

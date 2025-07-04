@@ -8,8 +8,8 @@ export default async function MyProfilePage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/auth/login?redirectTo=/profile");
+    redirect("/auth/login?redirectTo=/forum/profile");
   }
 
-  redirect(`/profile/${user.id}`);
+  redirect(`/forum/profile/${user.id}`);
 }

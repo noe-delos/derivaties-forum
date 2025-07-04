@@ -151,7 +151,9 @@ export function SearchInterface({
     if (f.sortBy && f.sortBy !== "recent") params.set("sort", f.sortBy);
     if (nl) params.set("nl", "true");
 
-    const url = `/search${params.toString() ? `?${params.toString()}` : ""}`;
+    const url = `/forum/search${
+      params.toString() ? `?${params.toString()}` : ""
+    }`;
     router.push(url);
   };
 
@@ -159,7 +161,7 @@ export function SearchInterface({
     setFilters({});
     setQuery("");
     setIsNaturalLanguage(false);
-    router.push("/search");
+    router.push("/forum/search");
   };
 
   const addTagFilter = (tag: string) => {

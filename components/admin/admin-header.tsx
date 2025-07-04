@@ -106,7 +106,7 @@ export function AdminHeader() {
 
         <div className="flex items-center gap-4">
           <Button variant="outline" size="sm" asChild>
-            <Link href="/">
+            <Link href="/forum">
               <Home className="h-4 w-4 mr-2" />
               Retour au forum
             </Link>

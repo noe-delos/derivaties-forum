@@ -309,7 +309,7 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
       }
 
       toast.info("Publication envoyé pour vérification !");
-      router.push("/");
+      router.push("/forum");
       router.refresh();
     } catch (error) {
       console.error("Error creating post:", error);

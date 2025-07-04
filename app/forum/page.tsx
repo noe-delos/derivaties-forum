@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { PostsFeed } from "@/components/posts/posts-feed";
+import { SearchFiltersComponent } from "@/components/posts/search-filters";
 import { SearchFilters, PostCategory, PostType } from "@/lib/types";
 
 export default function HomePage() {
@@ -32,8 +33,21 @@ export default function HomePage() {
     setIsNaturalLanguage(nl);
   }, [searchParams]);
 
+  const handleSearch = (
+    query: string,
+    filters: SearchFilters,
+    isNaturalLanguage: boolean
+  ) => {
+    setSearchQuery(query);
+    setSearchFilters(filters);
+    setIsNaturalLanguage(isNaturalLanguage);
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="max-w-6xl mx-auto px-4 space-y-6 pt-10">
+      {/* Search and Filters as one row */}
+      <SearchFiltersComponent onSearch={handleSearch} />
+
       {/* Posts Feed */}
       <PostsFeed
         category={searchFilters.category}

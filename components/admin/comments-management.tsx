@@ -270,7 +270,7 @@ export function CommentsManagement() {
                       {comment.post && (
                         <DropdownMenuItem asChild>
                           <a
-                            href={`/post/${comment.post.id}`}
+                            href={`/forum/post/${comment.post.id}`}
                             target="_blank"
                             rel="noopener noreferrer"
                           >

@@ -144,7 +144,7 @@ export function PostsFeed({
   if (isLoading) {
     console.log("⏳ PostsFeed showing loading state");
     return (
-      <div className="space-y-4 pl-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-5">
         {Array.from({ length: 10 }).map((_, i) => (
           <PostSkeleton key={i} />
         ))}
@@ -197,7 +197,7 @@ export function PostsFeed({
   console.log("✅ PostsFeed rendering posts successfully");
   return (
     <div className={className}>
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
         {posts.map((post, index) => {
           // Show blurred content for non-public posts to anonymous users
           const shouldBlur = !isAuthenticated;
@@ -226,8 +226,11 @@ export function PostsFeed({
           );
         })}
 
-        {/* Infinite scroll trigger */}
-        <div ref={ref} className="flex justify-center py-4">
+        {/* Infinite scroll trigger - spans both columns */}
+        <div
+          ref={ref}
+          className="col-span-1 md:col-span-2 flex justify-center py-4"
+        >
           {isFetchingNextPage && (
             <div className="flex items-center gap-2 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -236,9 +239,9 @@ export function PostsFeed({
           )}
         </div>
 
-        {/* End of feed message */}
+        {/* End of feed message - spans both columns */}
         {!hasNextPage && posts.length > 0 && (
-          <div className="text-center py-8">
+          <div className="col-span-1 md:col-span-2 text-center py-8">
             <p className="text-muted-foreground text-sm">
               Vous avez atteint la fin du feed !
             </p>

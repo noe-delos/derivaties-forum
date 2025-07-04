@@ -13,6 +13,7 @@ import {
   Flag,
   UserCheck,
   Shield,
+  CheckCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserRole } from "@/lib/types";
@@ -24,43 +25,43 @@ interface AdminSidebarProps {
 const navigationItems = [
   {
     title: "Tableau de bord",
-    href: "/admin",
+    href: "/forum/admin",
     icon: LayoutDashboard,
     roles: ["moderator", "admin"],
   },
   {
     title: "Modération des posts",
-    href: "/admin/posts",
+    href: "/forum/admin/posts",
     icon: FileText,
     roles: ["moderator", "admin"],
   },
   {
-    title: "Commentaires",
-    href: "/admin/comments",
-    icon: MessageSquare,
+    title: "Corrections",
+    href: "/forum/admin/corrections",
+    icon: CheckCircle,
     roles: ["moderator", "admin"],
   },
   {
     title: "Signalements",
-    href: "/admin/reports",
+    href: "/forum/admin/reports",
     icon: Flag,
     roles: ["moderator", "admin"],
   },
   {
     title: "Utilisateurs",
-    href: "/admin/users",
+    href: "/forum/admin/users",
     icon: Users,
     roles: ["moderator", "admin"],
   },
   {
     title: "Modérateurs",
-    href: "/admin/moderators",
+    href: "/forum/admin/moderators",
     icon: UserCheck,
     roles: ["admin"],
   },
   {
     title: "Statistiques",
-    href: "/admin/analytics",
+    href: "/forum/admin/analytics",
     icon: BarChart3,
     roles: ["moderator", "admin"],
   },
