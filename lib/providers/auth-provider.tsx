@@ -59,9 +59,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Get initial session
     const getInitialSession = async () => {
       try {
+        setIsLoading(true);
         const {
           data: { session },
         } = await supabase.auth.getSession();
+
+        console.log('Initial session:', session);
 
         if (session?.user) {
           setUser(session.user);
@@ -72,6 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.error("Error getting session:", error);
+        setUser(null);
+        setProfile(null);
       } finally {
         setIsLoading(false);
       }
@@ -83,14 +88,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_IN" && session?.user) {
-        setUser(session.user);
-        await fetchProfile(session.user.id);
-      } else if (event === "SIGNED_OUT") {
-        setUser(null);
-        setProfile(null);
+      console.log('Auth state change:', event, session);
+      
+      setIsLoading(true);
+      
+      try {
+        if (event === "SIGNED_IN" && session?.user) {
+          setUser(session.user);
+          await fetchProfile(session.user.id);
+        } else if (event === "SIGNED_OUT") {
+          setUser(null);
+          setProfile(null);
+        } else if (event === "TOKEN_REFRESHED" && session?.user) {
+          setUser(session.user);
+          // Don't re-fetch profile on token refresh if we already have it
+          if (!profile) {
+            await fetchProfile(session.user.id);
+          }
+        }
+      } catch (error) {
+        console.error('Error handling auth state change:', error);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     });
 
     return () => {

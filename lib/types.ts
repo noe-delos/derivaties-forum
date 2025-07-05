@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // Database types
 export type UserRole = "user" | "moderator" | "admin";
 export type PostCategory =

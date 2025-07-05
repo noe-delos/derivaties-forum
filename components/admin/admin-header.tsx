@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -108,7 +107,7 @@ export function AdminHeader() {
           <Button variant="outline" size="sm" asChild>
             <Link href="/forum">
               Retour sur
-              <img src="/logo-small.png" className="h-4 w-auto mr-0" />
+              <img src="/logo-small.png" className="h-4 w-auto mr-0" alt="BridgeYou Logo" />
               BridgeYou.
             </Link>
           </Button>

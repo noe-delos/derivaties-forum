@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Icon } from "@iconify/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,13 +50,22 @@ export function FinanceJobsManager() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const pageSize = 20;
 
+  // Memoize the query key to prevent unnecessary re-renders
+  const queryKey = useMemo(() => [
+    "finance-jobs", 
+    JSON.stringify(filters), 
+    page, 
+    sortBy, 
+    sortOrder
+  ], [filters, page, sortBy, sortOrder]);
+
   const {
     data: jobsData,
     isLoading: jobsLoading,
     error: jobsError,
     refetch,
   } = useQuery({
-    queryKey: ["finance-jobs", filters, page, sortBy, sortOrder],
+    queryKey,
     queryFn: async () => {
       try {
         console.log('Fetching finance jobs with:', { filters, page, pageSize });
@@ -93,7 +102,8 @@ export function FinanceJobsManager() {
         throw error;
       }
     },
-    refetchInterval: 30000,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchInterval: false, // Disable auto-refetch to prevent infinite loops
     retry: 3,
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
@@ -114,25 +124,29 @@ export function FinanceJobsManager() {
     queryFn: () => getUniqueLocations(supabase),
   });
 
-  const updateFilter = (key: keyof FinanceJobFilters, value: any) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
+  const updateFilter = useCallback((key: keyof FinanceJobFilters, value: any) => {
+    setFilters((prev) => {
+      // Only update if value actually changed
+      if (prev[key] === value) return prev;
+      return { ...prev, [key]: value };
+    });
     setPage(1);
-  };
+  }, []);
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setFilters({});
     setPage(1);
-  };
+  }, []);
 
-  const handleSort = (column: string) => {
+  const handleSort = useCallback((column: string) => {
     if (sortBy === column) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
     } else {
       setSortBy(column);
       setSortOrder('asc');
     }
     setPage(1);
-  };
+  }, [sortBy]);
 
   const getJobTypeColor = (jobType: JobType) => {
     switch (jobType) {
@@ -327,101 +341,129 @@ export function FinanceJobsManager() {
               <TableHeader>
                 <TableRow>
                   <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 select-none"
+                    className="cursor-pointer hover:bg-blue-50 hover:text-blue-700 select-none transition-colors duration-200 group"
                     onClick={() => handleSort('company_name')}
                   >
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2">
                       Entreprise
-                      {sortBy === 'company_name' && (
+                      <div className="flex flex-col opacity-30 group-hover:opacity-70 transition-opacity">
                         <Icon 
-                          icon={sortOrder === 'asc' ? "material-symbols:keyboard-arrow-up" : "material-symbols:keyboard-arrow-down"}
-                          className="h-4 w-4"
+                          icon="material-symbols:keyboard-arrow-up"
+                          className={`h-3 w-3 ${sortBy === 'company_name' && sortOrder === 'asc' ? 'text-blue-600 opacity-100' : ''}`}
                         />
-                      )}
+                        <Icon 
+                          icon="material-symbols:keyboard-arrow-down"
+                          className={`h-3 w-3 -mt-1 ${sortBy === 'company_name' && sortOrder === 'desc' ? 'text-blue-600 opacity-100' : ''}`}
+                        />
+                      </div>
                     </div>
                   </TableHead>
                   <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 select-none"
+                    className="cursor-pointer hover:bg-blue-50 hover:text-blue-700 select-none transition-colors duration-200 group"
                     onClick={() => handleSort('programme_name')}
                   >
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2">
                       Programme
-                      {sortBy === 'programme_name' && (
+                      <div className="flex flex-col opacity-30 group-hover:opacity-70 transition-opacity">
                         <Icon 
-                          icon={sortOrder === 'asc' ? "material-symbols:keyboard-arrow-up" : "material-symbols:keyboard-arrow-down"}
-                          className="h-4 w-4"
+                          icon="material-symbols:keyboard-arrow-up"
+                          className={`h-3 w-3 ${sortBy === 'programme_name' && sortOrder === 'asc' ? 'text-blue-600 opacity-100' : ''}`}
                         />
-                      )}
+                        <Icon 
+                          icon="material-symbols:keyboard-arrow-down"
+                          className={`h-3 w-3 -mt-1 ${sortBy === 'programme_name' && sortOrder === 'desc' ? 'text-blue-600 opacity-100' : ''}`}
+                        />
+                      </div>
                     </div>
                   </TableHead>
                   <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 select-none"
+                    className="cursor-pointer hover:bg-blue-50 hover:text-blue-700 select-none transition-colors duration-200 group"
                     onClick={() => handleSort('job_type')}
                   >
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2">
                       Type
-                      {sortBy === 'job_type' && (
+                      <div className="flex flex-col opacity-30 group-hover:opacity-70 transition-opacity">
                         <Icon 
-                          icon={sortOrder === 'asc' ? "material-symbols:keyboard-arrow-up" : "material-symbols:keyboard-arrow-down"}
-                          className="h-4 w-4"
+                          icon="material-symbols:keyboard-arrow-up"
+                          className={`h-3 w-3 ${sortBy === 'job_type' && sortOrder === 'asc' ? 'text-blue-600 opacity-100' : ''}`}
                         />
-                      )}
+                        <Icon 
+                          icon="material-symbols:keyboard-arrow-down"
+                          className={`h-3 w-3 -mt-1 ${sortBy === 'job_type' && sortOrder === 'desc' ? 'text-blue-600 opacity-100' : ''}`}
+                        />
+                      </div>
                     </div>
                   </TableHead>
                   <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 select-none"
+                    className="cursor-pointer hover:bg-blue-50 hover:text-blue-700 select-none transition-colors duration-200 group"
                     onClick={() => handleSort('category')}
                   >
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2">
                       Catégorie
-                      {sortBy === 'category' && (
+                      <div className="flex flex-col opacity-30 group-hover:opacity-70 transition-opacity">
                         <Icon 
-                          icon={sortOrder === 'asc' ? "material-symbols:keyboard-arrow-up" : "material-symbols:keyboard-arrow-down"}
-                          className="h-4 w-4"
+                          icon="material-symbols:keyboard-arrow-up"
+                          className={`h-3 w-3 ${sortBy === 'category' && sortOrder === 'asc' ? 'text-blue-600 opacity-100' : ''}`}
                         />
-                      )}
+                        <Icon 
+                          icon="material-symbols:keyboard-arrow-down"
+                          className={`h-3 w-3 -mt-1 ${sortBy === 'category' && sortOrder === 'desc' ? 'text-blue-600 opacity-100' : ''}`}
+                        />
+                      </div>
                     </div>
                   </TableHead>
                   <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 select-none"
+                    className="cursor-pointer hover:bg-blue-50 hover:text-blue-700 select-none transition-colors duration-200 group"
                     onClick={() => handleSort('locations')}
                   >
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2">
                       Localisation
-                      {sortBy === 'locations' && (
+                      <div className="flex flex-col opacity-30 group-hover:opacity-70 transition-opacity">
                         <Icon 
-                          icon={sortOrder === 'asc' ? "material-symbols:keyboard-arrow-up" : "material-symbols:keyboard-arrow-down"}
-                          className="h-4 w-4"
+                          icon="material-symbols:keyboard-arrow-up"
+                          className={`h-3 w-3 ${sortBy === 'locations' && sortOrder === 'asc' ? 'text-blue-600 opacity-100' : ''}`}
                         />
-                      )}
+                        <Icon 
+                          icon="material-symbols:keyboard-arrow-down"
+                          className={`h-3 w-3 -mt-1 ${sortBy === 'locations' && sortOrder === 'desc' ? 'text-blue-600 opacity-100' : ''}`}
+                        />
+                      </div>
                     </div>
                   </TableHead>
                   <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 select-none"
+                    className="cursor-pointer hover:bg-blue-50 hover:text-blue-700 select-none transition-colors duration-200 group"
                     onClick={() => handleSort('opening_date')}
                   >
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2">
                       Date d'ouverture
-                      {sortBy === 'opening_date' && (
+                      <div className="flex flex-col opacity-30 group-hover:opacity-70 transition-opacity">
                         <Icon 
-                          icon={sortOrder === 'asc' ? "material-symbols:keyboard-arrow-up" : "material-symbols:keyboard-arrow-down"}
-                          className="h-4 w-4"
+                          icon="material-symbols:keyboard-arrow-up"
+                          className={`h-3 w-3 ${sortBy === 'opening_date' && sortOrder === 'asc' ? 'text-blue-600 opacity-100' : ''}`}
                         />
-                      )}
+                        <Icon 
+                          icon="material-symbols:keyboard-arrow-down"
+                          className={`h-3 w-3 -mt-1 ${sortBy === 'opening_date' && sortOrder === 'desc' ? 'text-blue-600 opacity-100' : ''}`}
+                        />
+                      </div>
                     </div>
                   </TableHead>
                   <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 select-none"
+                    className="cursor-pointer hover:bg-blue-50 hover:text-blue-700 select-none transition-colors duration-200 group"
                     onClick={() => handleSort('closing_date')}
                   >
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2">
                       Date de clôture
-                      {sortBy === 'closing_date' && (
+                      <div className="flex flex-col opacity-30 group-hover:opacity-70 transition-opacity">
                         <Icon 
-                          icon={sortOrder === 'asc' ? "material-symbols:keyboard-arrow-up" : "material-symbols:keyboard-arrow-down"}
-                          className="h-4 w-4"
+                          icon="material-symbols:keyboard-arrow-up"
+                          className={`h-3 w-3 ${sortBy === 'closing_date' && sortOrder === 'asc' ? 'text-blue-600 opacity-100' : ''}`}
                         />
-                      )}
+                        <Icon 
+                          icon="material-symbols:keyboard-arrow-down"
+                          className={`h-3 w-3 -mt-1 ${sortBy === 'closing_date' && sortOrder === 'desc' ? 'text-blue-600 opacity-100' : ''}`}
+                        />
+                      </div>
                     </div>
                   </TableHead>
                   <TableHead>Exigences</TableHead>
@@ -513,6 +555,8 @@ export function FinanceJobsManager() {
 
                 <div className="flex items-center gap-1">
                   {(() => {
+                    if (!jobsData?.count) return null;
+                    
                     const totalPages = Math.ceil(jobsData.count / pageSize);
                     const pages = [];
                     

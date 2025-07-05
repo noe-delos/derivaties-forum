@@ -1,10 +1,10 @@
-/* eslint-disable react/no-unescaped-entities */
 import { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import Image from "next/image";
 import { LoginForm } from "@/components/auth/login-form";
 import { RedirectMessage } from "@/components/auth/redirect-message";
+import { AuthRedirect } from "@/components/auth/auth-redirect";
 
 export const metadata: Metadata = {
   title: "Connexion - DERIVATIVES",
@@ -13,7 +13,8 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex p-6">
+    <AuthRedirect requireAuth={false} redirectTo="/forum">
+      <div className="min-h-screen flex p-6">
       {/* Left side - Gradient background with text */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 relative overflow-hidden rounded-2xl">
         <div className="absolute inset-0 bg-black/30"></div>
@@ -94,5 +95,6 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+    </AuthRedirect>
   );
 }

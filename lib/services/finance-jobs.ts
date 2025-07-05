@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
 import { SupabaseClient } from "@supabase/supabase-js";
 import { FinanceJob, FinanceJobFilters, FinanceJobStats, JobType, JobCategory } from "@/lib/types";
 

@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "@/hooks/use-auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -39,6 +40,15 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = useSupabase();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      const redirectTo = searchParams.get("redirectTo") || "/forum";
+      router.push(redirectTo);
+    }
+  }, [isAuthenticated, authLoading, router, searchParams]);
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema) as any,
@@ -53,7 +63,7 @@ export function LoginForm() {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error, data: authData } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       });
@@ -64,11 +74,12 @@ export function LoginForm() {
 
       toast.success("Connexion réussie !");
 
-      // Get redirect URL from search params or default to home
-      const redirectTo = searchParams.get("redirectTo") || "/";
+      // Wait a moment for auth state to update, then redirect
+      setTimeout(() => {
+        const redirectTo = searchParams.get("redirectTo") || "/forum";
+        router.push(redirectTo);
+      }, 500);
 
-      // Use window.location for immediate redirect
-      window.location.href = redirectTo;
     } catch (error: any) {
       console.error("Login error:", error);
 
@@ -77,7 +88,6 @@ export function LoginForm() {
       } else {
         toast.error("Erreur lors de la connexion. Veuillez réessayer.");
       }
-    } finally {
       setIsLoading(false);
     }
   };
