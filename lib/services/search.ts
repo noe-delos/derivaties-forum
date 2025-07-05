@@ -2,6 +2,7 @@
 
 import OpenAI from "openai";
 import { getAdminSupabaseClient } from "../supabase/admin";
+import { fetchBanks } from "./banks";
 import {
   Post,
   PostCategory,
@@ -13,6 +14,39 @@ import {
 } from "@/lib/types";
 
 const ITEMS_PER_PAGE = 10;
+
+// Bank name mapping cache
+let bankCache: { name: string; id: string }[] | null = null;
+
+async function getBankIdsByNames(bankNames: string[]): Promise<string[]> {
+  if (!bankCache) {
+    try {
+      const banks = await fetchBanks();
+      bankCache = banks.map(bank => ({ name: bank.name, id: bank.id }));
+    } catch (error) {
+      console.error("Error fetching banks for name mapping:", error);
+      return [];
+    }
+  }
+
+  const bankIds: string[] = [];
+  
+  for (const bankName of bankNames) {
+    const bank = bankCache.find(b => 
+      b.name.toLowerCase() === bankName.toLowerCase() ||
+      b.name.toLowerCase().includes(bankName.toLowerCase()) ||
+      bankName.toLowerCase().includes(b.name.toLowerCase())
+    );
+    
+    if (bank) {
+      bankIds.push(bank.id);
+    } else {
+      console.warn(`Bank not found in database: ${bankName}`);
+    }
+  }
+  
+  return bankIds;
+}
 
 // Initialize OpenAI client only if API key is available
 let openai: OpenAI | null = null;
@@ -31,6 +65,8 @@ interface SearchAnalysis {
   categories: PostCategory[];
   types: PostType[];
   tags: string[];
+  cities: string[];
+  banks: string[];
   dateRange?: {
     from?: string;
     to?: string;
@@ -52,6 +88,8 @@ async function analyzeNaturalLanguageQuery(
       categories: [],
       types: [],
       tags: [],
+      cities: [],
+      banks: [],
       sortBy: "recent" as const,
       confidence: 0.5,
     };
@@ -66,48 +104,80 @@ async function analyzeNaturalLanguageQuery(
 Query: "${query}"
 
 Context: This is a forum about finance, trading, internships, and careers in:
-- Sales & Trading interviews
-- School advice 
-- Internships/Summer/Graduate programs
-- Quantitative finance & Hedge funds
+- Sales & Trading interviews and processes
+- School advice and university guidance
+- Internships/Summer/Graduate programs and applications
+- Quantitative finance & Hedge funds careers
+- Banking industry insights and networking
 
 Available categories:
-- entretien_sales_trading: Sales & Trading interviews
-- conseils_ecole: School advice
-- stage_summer_graduate: Internships/Summer/Graduate
-- quant_hedge_funds: Quantitative & Hedge funds
+- entretien_sales_trading: Sales & Trading interviews (includes interview questions, prep, experiences)
+- conseils_ecole: School advice (university choices, courses, academic guidance)
+- stage_summer_graduate: Internships/Summer/Graduate (applications, experiences, programs)
+- quant_hedge_funds: Quantitative & Hedge funds (quant roles, hedge fund careers, math finance)
 
 Available post types:
-- question: Questions
-- retour_experience: Experience feedback
-- transcript_entretien: Interview transcripts
-- fichier_attache: Attached files
+- question: Questions (seeking advice, asking for help)
+- retour_experience: Experience feedback (sharing experiences, testimonials)
+- transcript_entretien: Interview transcripts (actual interview Q&A, prep materials)
+- fichier_attache: Attached files (documents, resources, materials)
+
+Available banks in database (use EXACT names):
+- Goldman Sachs
+- Rothschild & Co  
+- Société Générale
+- BNP Paribas
+- Crédit Agricole
+- Crédit Mutuel
+
+Common cities: Paris, Londres, New York, Hong Kong, Singapour, Dubaï, Francfort, Tokyo, Zurich, Toronto
 
 Extract and return ONLY a JSON object with these fields:
 {
-  "searchTerms": ["array", "of", "relevant", "keywords"],
+  "searchTerms": ["array", "of", "relevant", "keywords", "excluding", "detected", "banks"],
   "categories": ["array_of_matching_category_keys"],
   "types": ["array_of_matching_type_keys"],
-  "tags": ["array", "of", "relevant", "tags"],
+  "tags": ["relevant", "tags", "from", "finance", "domain"],
+  "cities": ["detected", "city", "names"],
+  "banks": ["exact", "bank", "names", "from", "database", "list"],
   "dateRange": {"from": "YYYY-MM-DD", "to": "YYYY-MM-DD"} or null,
   "sortBy": "recent|popular|comments",
   "confidence": 0.0-1.0
 }
 
-Rules:
-- Only include categories/types that match the query
-- Extract meaningful search terms in both French and English
-- Set sortBy based on query intent (popular for "best", recent for "latest", comments for "discussion")
-- Return confidence score based on how well you understand the query
-- If no specific date mentioned, leave dateRange null`;
+CRITICAL Bank Detection Rules:
+- When "entretiens de [bank]" or "entretiens chez [bank]" is mentioned → focus on bank filtering, be flexible with categories
+- Map common bank aliases to exact names:
+  * "Goldman" or "GS" → "Goldman Sachs"
+  * "SocGen" or "Société Générale" or "Societe Generale" → "Société Générale"
+  * "BNP" → "BNP Paribas"
+  * "Rothschild" → "Rothschild & Co"
+  * "Crédit Ag" → "Crédit Agricole"
+- When a specific bank is mentioned:
+  * Include ONLY that bank in "banks" array
+  * Remove bank names from searchTerms to avoid keyword conflicts
+  * Leave "categories" empty OR include only if explicitly mentioned (not implied)
+  * Leave "tags" empty to allow broader matching
+  * Set higher confidence (0.8+) when specific banks are detected
+- Prioritize bank-specific content over strict categorization
+
+Enhanced Rules:
+- Extract ALL relevant keywords EXCEPT detected bank names
+- Detect implicit categories (e.g., "entretien Goldman" → entretien_sales_trading + banks: ["Goldman Sachs"])
+- Recognize synonyms (stage=internship, école=university, conseil=advice)
+- Identify financial jargon (M&A, IBD, S&T, quant, hedge fund, PE, VC)
+- Parse temporal expressions ("cette année", "2024", "recent")
+- Set appropriate sortBy: "popular" for "meilleur/best", "recent" for "récent/latest", "comments" for "discussion/débat"
+- When banks are specified, focus results on that bank only
+- Include cities if mentioned or implied`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4.1",
       messages: [
         {
           role: "system",
           content:
-            "You are a search query analyzer for a French trading forum. Return only valid JSON.",
+            "You are a search query analyzer for a French trading forum of finance interviews. Return only valid JSON.",
         },
         {
           role: "user",
@@ -115,7 +185,6 @@ Rules:
         },
       ],
       temperature: 0.3,
-      max_tokens: 500,
     });
 
     const content = response.choices[0]?.message?.content?.trim();
@@ -145,6 +214,8 @@ Rules:
           )
         : [],
       tags: Array.isArray(analysis.tags) ? analysis.tags : [],
+      cities: Array.isArray(analysis.cities) ? analysis.cities : [],
+      banks: Array.isArray(analysis.banks) ? analysis.banks : [],
       dateRange: analysis.dateRange || undefined,
       sortBy: ["recent", "popular", "comments"].includes(analysis.sortBy)
         ? analysis.sortBy
@@ -165,6 +236,8 @@ Rules:
       categories: [],
       types: [],
       tags: [],
+      cities: [],
+      banks: [],
       sortBy: "recent" as const,
       confidence: 0.5,
     };
@@ -208,12 +281,26 @@ export async function enhancedSearchPosts({
     console.log("🤖 Using natural language search mode");
     searchAnalysis = await analyzeNaturalLanguageQuery(query);
 
+    // Convert bank names to bank IDs
+    let bankIds: string[] = [];
+    if (searchAnalysis.banks && searchAnalysis.banks.length > 0) {
+      bankIds = await getBankIdsByNames(searchAnalysis.banks);
+      console.log("🏦 Converted bank names to IDs:", { 
+        names: searchAnalysis.banks, 
+        ids: bankIds 
+      });
+    }
+
     // Merge AI analysis with existing filters (only if no explicit filters are set)
+    // Special handling: If specific banks are detected, prioritize bank filtering and be more flexible with other filters
+    const hasBankSpecified = bankIds.length > 0;
+    
     effectiveFilters = {
       ...effectiveFilters,
       category:
         effectiveFilters.category ||
-        (searchAnalysis.categories.length === 1
+        // Only apply category filter if no specific bank mentioned, or if category is very confident
+        (!hasBankSpecified && searchAnalysis.categories.length === 1
           ? searchAnalysis.categories[0]
           : undefined),
       type:
@@ -221,9 +308,16 @@ export async function enhancedSearchPosts({
         (searchAnalysis.types.length === 1
           ? searchAnalysis.types[0]
           : undefined),
+      // Don't apply tag filters when a specific bank is mentioned - let the bank filter do the work
       tags: effectiveFilters.tags?.length
         ? effectiveFilters.tags
-        : searchAnalysis.tags,
+        : (hasBankSpecified ? [] : searchAnalysis.tags),
+      cities: effectiveFilters.cities?.length
+        ? effectiveFilters.cities
+        : searchAnalysis.cities,
+      banks: effectiveFilters.banks?.length
+        ? effectiveFilters.banks
+        : bankIds, // Use converted bank IDs
       date_from: effectiveFilters.date_from || searchAnalysis.dateRange?.from,
       date_to: effectiveFilters.date_to || searchAnalysis.dateRange?.to,
       sortBy: effectiveFilters.sortBy || searchAnalysis.sortBy,
@@ -266,7 +360,15 @@ export async function enhancedSearchPosts({
     .eq("status", "approved");
 
   // Apply search terms - search in title and content
-  if (searchTerms.length > 0) {
+  // Special handling: If bank is specified and search terms are generic (like "entretiens"), make text search optional
+  const hasBankFilter = effectiveFilters.banks && effectiveFilters.banks.length > 0;
+  const hasGenericSearchTerms = searchTerms.length === 1 && 
+    (searchTerms[0].toLowerCase() === "entretiens" || 
+     searchTerms[0].toLowerCase() === "entretien" ||
+     searchTerms[0].toLowerCase() === "stages" ||
+     searchTerms[0].toLowerCase() === "stage");
+  
+  if (searchTerms.length > 0 && !(hasBankFilter && hasGenericSearchTerms)) {
     console.log("🔍 Applying search terms to query...");
     if (isNaturalLanguage && searchTerms.length > 1) {
       // For natural language, create a more intelligent search
@@ -291,6 +393,8 @@ export async function enhancedSearchPosts({
         `title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`
       );
     }
+  } else if (hasBankFilter && hasGenericSearchTerms) {
+    console.log("🏦 Bank-specific search: skipping generic search term matching for broader results");
   }
 
   // If not authenticated, only show public posts
@@ -315,6 +419,10 @@ export async function enhancedSearchPosts({
   if (effectiveFilters.tags && effectiveFilters.tags.length > 0) {
     console.log("🏷️ Applying tags filter:", effectiveFilters.tags);
     dbQuery = dbQuery.overlaps("tags", effectiveFilters.tags);
+  }
+  if (effectiveFilters.cities && effectiveFilters.cities.length > 0) {
+    console.log("🏙️ Applying cities filter:", effectiveFilters.cities);
+    dbQuery = dbQuery.in("city", effectiveFilters.cities);
   }
   if (effectiveFilters.date_from) {
     console.log("📅 Applying date_from filter:", effectiveFilters.date_from);

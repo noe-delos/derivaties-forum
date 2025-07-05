@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useInView } from "react-intersection-observer";
+import { toast } from "sonner";
 import {
   Search,
   Filter,
@@ -76,6 +77,7 @@ export function SearchInterface({
   const [showFilters, setShowFilters] = useState(false);
   const [searchAnalysisVisible, setSearchAnalysisVisible] = useState(false);
   const [openAIAvailable, setOpenAIAvailable] = useState(true);
+  const [currentToastId, setCurrentToastId] = useState<string | number | null>(null);
 
   const { ref, inView } = useInView({
     threshold: 0,
@@ -128,7 +130,76 @@ export function SearchInterface({
     }
   }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
+  // Dismiss toast when search completes (not loading and not error)
+  useEffect(() => {
+    if (currentToastId && !isLoading && !error) {
+      toast.dismiss(currentToastId);
+      setCurrentToastId(null);
+    }
+  }, [isLoading, error, currentToastId]);
+
+  const showSearchLoadingToast = () => {
+    const toastId = toast.loading(
+      <motion.div
+        key="step1"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex items-center gap-2"
+      >
+        <Sparkles className="h-4 w-4 animate-pulse" />
+        <span>Nous analysons votre requête...</span>
+      </motion.div>
+    );
+
+    // After 2 seconds, update to step 2
+    setTimeout(() => {
+      toast.loading(
+        <motion.div
+          key="step2"
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3 }}
+          className="flex items-center gap-2"
+        >
+          <Search className="h-4 w-4 animate-pulse" />
+          <span>Exécution de la requête...</span>
+        </motion.div>,
+        { id: toastId }
+      );
+    }, 2000);
+
+    // After 4 seconds, update to step 3
+    setTimeout(() => {
+      toast.loading(
+        <motion.div
+          key="step3"
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3 }}
+          className="flex items-center gap-2"
+        >
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Obtention des résultats...</span>
+        </motion.div>,
+        { id: toastId }
+      );
+    }, 4000);
+
+    return toastId;
+  };
+
   const handleSearch = (searchQuery: string) => {
+    // Dismiss any existing toast
+    if (currentToastId) {
+      toast.dismiss(currentToastId);
+    }
+    
+    // Only show loading toast for natural language searches or non-empty queries
+    if ((isNaturalLanguage && searchQuery.trim()) || searchQuery.trim()) {
+      const toastId = showSearchLoadingToast();
+      setCurrentToastId(toastId);
+    }
+
     setQuery(searchQuery);
     updateURL(searchQuery, filters, isNaturalLanguage);
   };
