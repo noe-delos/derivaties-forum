@@ -53,39 +53,49 @@ export function FinanceJobsManager() {
   const {
     data: jobsData,
     isLoading: jobsLoading,
+    error: jobsError,
     refetch,
   } = useQuery({
     queryKey: ["finance-jobs", filters, page, sortBy, sortOrder],
     queryFn: async () => {
-      const result = await fetchFinanceJobs(supabase, filters, page, pageSize);
+      try {
+        console.log('Fetching finance jobs with:', { filters, page, pageSize });
+        const result = await fetchFinanceJobs(supabase, filters, page, pageSize);
+        console.log('Finance jobs result:', result);
 
-      // Apply sorting
-      const sorted = [...result.data].sort((a, b) => {
-        let aVal: any = a[sortBy as keyof typeof a];
-        let bVal: any = b[sortBy as keyof typeof b];
-        
-        if (aVal === null) aVal = '';
-        if (bVal === null) bVal = '';
-        
-        if (sortBy === 'opening_date' || sortBy === 'closing_date') {
-          aVal = aVal ? new Date(aVal as string).getTime() : 0;
-          bVal = bVal ? new Date(bVal as string).getTime() : 0;
+        // Apply sorting
+        const sorted = [...result.data].sort((a, b) => {
+          let aVal: any = a[sortBy as keyof typeof a];
+          let bVal: any = b[sortBy as keyof typeof b];
+          
+          if (aVal === null) aVal = '';
+          if (bVal === null) bVal = '';
+          
+          if (sortBy === 'opening_date' || sortBy === 'closing_date') {
+            aVal = aVal ? new Date(aVal as string).getTime() : 0;
+            bVal = bVal ? new Date(bVal as string).getTime() : 0;
+          }
+          
+          if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+          if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+          return 0;
+        });
+
+        // If no job type filter is selected, mix up the job types (but respect sorting)
+        if ((!filters.job_type || filters.job_type === "all") && sortBy === 'created_at') {
+          const shuffled = [...sorted].sort(() => Math.random() - 0.5);
+          return { ...result, data: shuffled };
         }
-        
-        if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
-        if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
-        return 0;
-      });
 
-      // If no job type filter is selected, mix up the job types (but respect sorting)
-      if ((!filters.job_type || filters.job_type === "all") && sortBy === 'created_at') {
-        const shuffled = [...sorted].sort(() => Math.random() - 0.5);
-        return { ...result, data: shuffled };
+        return { ...result, data: sorted };
+      } catch (error) {
+        console.error('Error in finance jobs query:', error);
+        throw error;
       }
-
-      return { ...result, data: sorted };
     },
     refetchInterval: 30000,
+    retry: 3,
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -281,7 +291,30 @@ export function FinanceJobsManager() {
       </div>
 
       {/* Jobs Table */}
-      {jobsLoading ? (
+      {jobsError ? (
+        <div className="rounded-md border border-red-200 bg-red-50 p-4">
+          <div className="text-red-800">
+            <h3 className="font-medium">Erreur de chargement</h3>
+            <p className="text-sm mt-1">
+              Impossible de charger les données des emplois finance. 
+              {process.env.NODE_ENV === 'development' && (
+                <span className="block mt-2 font-mono text-xs">
+                  {jobsError instanceof Error ? jobsError.message : String(jobsError)}
+                </span>
+              )}
+            </p>
+            <Button 
+              onClick={() => refetch()} 
+              variant="outline" 
+              size="sm" 
+              className="mt-3"
+            >
+              <Icon icon="material-symbols:refresh" className="h-4 w-4 mr-2" />
+              Réessayer
+            </Button>
+          </div>
+        </div>
+      ) : jobsLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-16 w-full" />
