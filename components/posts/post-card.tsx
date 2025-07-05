@@ -441,11 +441,11 @@ export function PostCard({
 
           {/* Blur overlay for anonymous users */}
           {isBlurred && (
-            <div className="absolute inset-0 flex items-end justify-center pb-4">
-              <Button asChild variant="outline">
-                <Link href="/auth/signup">
-                  <Eye className="mr-2 h-4 w-4" />
-                  Voir plus
+            <div className="absolute mb-8 inset-0 flex items-end justify-center pb-4">
+              <Button className="shadow-lg rounded-xl w-fit bg-gradient-to-r from-zinc-500 to-zinc-900 text-white border-0">
+                <Link href="/auth/signup" className="flex items-center gap-1">
+                  <Icon icon="iconamoon:eye-fill" className="mr-2 h-4 w-4" />
+                  Voir
                 </Link>
               </Button>
             </div>

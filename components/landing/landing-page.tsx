@@ -9,17 +9,51 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { fetchBanks } from "@/lib/services/banks";
-import { Bank } from "@/lib/types";
+import { DotPattern } from "@/components/magicui/dot-pattern";
+import { BentoCard, BentoGrid } from "@/components/magicui/bento-grid";
+import { Marquee } from "@/components/magicui/marquee";
+import { AnimatedList } from "@/components/magicui/animated-list";
+import { Icon } from "@iconify/react";
+import { cn } from "@/lib/utils";
 
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
-  const [banks, setBanks] = useState<Bank[]>([]);
 
   const { scrollY } = useScroll();
   const headerOpacity = useTransform(scrollY, [0, 100], [0, 1]);
   const heroY = useTransform(scrollY, [0, 500], [0, 150]);
   const heroOpacity = useTransform(scrollY, [0, 300], [1, 0.8]);
+
+  // Static banks data
+  const banks = [
+    {
+      id: 1,
+      name: "Goldman Sachs",
+      logo_url: "/goldman.png",
+    },
+    {
+      id: 2,
+      name: "Société Générale",
+      logo_url:
+        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT6L1Ve75Tf6cTzo_-ZA8hRYvaX7mwCjd7OOQ&s",
+    },
+    {
+      id: 3,
+      name: "Rothschild",
+      logo_url: "/rothshild.png",
+    },
+    {
+      id: 4,
+      name: "BNP Paribas",
+      logo_url:
+        "https://companieslogo.com/img/orig/BNP.PA-75daacb0.png?t=1720244491",
+    },
+    {
+      id: 5,
+      name: "JPMorgan",
+      logo_url: "/jpmorgan.png",
+    },
+  ];
 
   const navigationItems = [
     {
@@ -57,18 +91,6 @@ export default function LandingPage() {
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  useEffect(() => {
-    const loadBanks = async () => {
-      try {
-        const banksData = await fetchBanks();
-        setBanks(banksData.slice(0, 5)); // Get first 5 banks for logos
-      } catch (error) {
-        console.error("Error loading banks:", error);
-      }
-    };
-    loadBanks();
   }, []);
 
   return (
@@ -165,6 +187,7 @@ export default function LandingPage() {
         className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-800 relative overflow-hidden"
         style={{ y: heroY, opacity: heroOpacity }}
       >
+        <DotPattern className="opacity-30" />
         <div className="absolute inset-0 bg-gradient-to-r from-zinc-900/40 to-zinc-800/40"></div>
         <div className="relative pt-32 pb-20 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto text-center">
@@ -174,40 +197,48 @@ export default function LandingPage() {
               transition={{ duration: 0.8 }}
               className="mb-6"
             >
-              <Badge className="bg-zinc-600/20 text-zinc-300 border-zinc-400/30 mb-8">
-                🚀 Accélère ta carrière professionnelle
+              <Badge className="bg-zinc-600/20 text-zinc-300 border-zinc-400/30 mb-8 rounded-full py-2 px-2 pr-4 flex items-center justify-center w-fit mx-auto backdrop-blur-xs">
+                <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-full overflow-hidden">
+                    <img
+                      src="https://derivativesfinance.fr/wp-content/uploads/2024/03/1708998508964-jpeg.webp"
+                      alt="Ziyad El Yaagoubi"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <span>Proposé par Ziyad El Yaagoubi</span>
+                </div>
               </Badge>
             </motion.div>
 
             <motion.h1
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6"
+              className="text-[5.5rem] font-medium text-white mb-6 tracking-tight leading-none"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
             >
-              La communauté{" "}
-              <span className="bg-gradient-to-r from-zinc-300 to-zinc-100 bg-clip-text text-transparent">
-                professionnelle
+              La plateforme{" "}
+              <span className="bg-gradient-to-b from-white to-amber-400 bg-clip-text text-transparent">
+                #1
               </span>
               <br />
-              qui transforme{" "}
-              <span className="bg-gradient-to-r from-zinc-300 to-zinc-100 bg-clip-text text-transparent">
-                l'avenir
+              <span className="bg-gradient-to-r from-zinc-100 to-zinc-400 bg-clip-text text-transparent">
+                pour percer en Finance.
               </span>
             </motion.h1>
 
             <motion.p
-              className="text-base sm:text-lg md:text-xl text-zinc-300 mb-8 max-w-4xl mx-auto px-4"
+              className="text-md text-zinc-400 mb-8 max-w-4xl mx-auto px-4"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
             >
-              Connecte-toi avec les professionnels leaders en Finance,
-              Consulting et Technology.
+              Accède aux opportunités les plus lucratives en Finance, Conseil et
+              Tech.
               <br className="hidden sm:block" />
               <span className="sm:hidden"> </span>
-              Partage ton expérience, découvre les coulisses et évolue
-              rapidement.
+              Découvre les salaires réels pour Stages, Alternances, CDI et bien
+              plus encore.
             </motion.p>
 
             <motion.div
@@ -237,16 +268,17 @@ export default function LandingPage() {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.8, delay: 0.8 }}
             >
-              <div className="flex -space-x-2">
+              <div className="flex -space-x-5">
                 {banks.slice(0, 5).map((bank, index) => (
                   <div
                     key={bank.id}
-                    className="w-8 h-8 rounded-full border-2 border-white overflow-hidden bg-white"
+                    className="w-12 h-12 rounded-full border-2 border-white overflow-hidden"
+                    style={{ backgroundColor: "#323234" }}
                   >
                     <img
                       src={bank.logo_url}
                       alt={bank.name}
-                      className="w-full h-full object-contain p-1"
+                      className="w-full h-full object-contain p-2 rounded-full"
                     />
                   </div>
                 ))}
@@ -297,51 +329,210 @@ export default function LandingPage() {
             </h2>
           </motion.div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12 px-4">
-            {[
-              {
-                company: "Goldman Sachs",
-                description:
-                  "Grâce aux retours de la communauté, j'ai décroché mon stage d'été en M&A.",
-                logo: "🏦",
-              },
-              {
-                company: "McKinsey & Company",
-                description:
-                  "Les conseils pratiques m'ont aidé à réussir mes case studies.",
-                logo: "📊",
-              },
-              {
-                company: "Google",
-                description:
-                  "L'entraide entre membres m'a permis de préparer efficacement mes entretiens tech.",
-                logo: "💻",
-              },
-            ].map((item, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                viewport={{ once: true }}
-              >
-                <Card className="hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-                  <CardContent className="p-6">
-                    <div className="flex items-center mb-4">
-                      <div className="text-2xl mr-3">{item.logo}</div>
-                      <h3 className="font-bold text-base text-zinc-900">
-                        {item.company}
-                      </h3>
+          {/* Bento Grid */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            viewport={{ once: true }}
+          >
+            <BentoGrid>
+              {/* Salaries Card */}
+              <BentoCard
+                name="Salaires Transparents"
+                description="Découvre les salaires réels des plus grandes entreprises de Finance."
+                Icon={({ className }: { className?: string }) => (
+                  <Icon
+                    icon="material-symbols:payments"
+                    className={className}
+                  />
+                )}
+                href="/forum/salaires"
+                cta="Voir les salaires"
+                className="col-span-3 lg:col-span-2"
+                background={
+                  <Marquee
+                    pauseOnHover
+                    className="absolute top-10 [--duration:20s] [mask-image:linear-gradient(to_top,transparent_40%,#000_100%)]"
+                  >
+                    {[
+                      {
+                        company: "Goldman Sachs",
+                        role: "Analyst M&A",
+                        salary: "95k€",
+                      },
+                      {
+                        company: "McKinsey",
+                        role: "Consultant",
+                        salary: "85k€",
+                      },
+                      {
+                        company: "JPMorgan",
+                        role: "Sales & Trading",
+                        salary: "88k€",
+                      },
+                      { company: "BCG", role: "Associate", salary: "90k€" },
+                      {
+                        company: "Rothschild",
+                        role: "Investment Banking",
+                        salary: "82k€",
+                      },
+                    ].map((item, idx) => (
+                      <div
+                        key={idx}
+                        className={cn(
+                          "relative w-48 cursor-pointer overflow-hidden rounded-xl border p-4 m-2",
+                          "border-gray-950/[.1] bg-gray-950/[.01] hover:bg-gray-950/[.05]",
+                          "transform-gpu transition-all duration-300 ease-out hover:scale-105"
+                        )}
+                      >
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                            <Icon
+                              icon="material-symbols:business"
+                              className="w-4 h-4 text-white"
+                            />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">
+                              {item.company}
+                            </p>
+                            <p className="text-xs text-gray-600">{item.role}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-lg font-bold text-green-600">
+                            {item.salary}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </Marquee>
+                }
+              />
+
+              {/* Notifications Card */}
+              <BentoCard
+                name="Alertes Opportunités"
+                description="Reste informé des nouvelles offres et opportunités en temps réel."
+                Icon={({ className }: { className?: string }) => (
+                  <Icon
+                    icon="material-symbols:notifications"
+                    className={className}
+                  />
+                )}
+                href="/forum/notifications"
+                cta="Voir les alertes"
+                className="col-span-3 lg:col-span-1"
+                background={
+                  <AnimatedList className="absolute right-2 top-4 h-[300px] w-full scale-75 border-none transition-all duration-300 ease-out [mask-image:linear-gradient(to_top,transparent_10%,#000_100%)] group-hover:scale-90" />
+                }
+              />
+
+              {/* Interviews Card */}
+              <BentoCard
+                name="Retours d'Expérience"
+                description="Accède aux témoignages exclusifs d'entretiens dans les top entreprises."
+                Icon={({ className }: { className?: string }) => (
+                  <Icon icon="material-symbols:chat" className={className} />
+                )}
+                href="/forum/interviews"
+                cta="Lire les témoignages"
+                className="col-span-3 lg:col-span-1"
+                background={
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+                    <div className="absolute top-6 left-6 space-y-3">
+                      {[
+                        {
+                          company: "Goldman Sachs",
+                          type: "Final Round",
+                          rating: "4.2/5",
+                        },
+                        {
+                          company: "McKinsey",
+                          type: "Case Study",
+                          rating: "4.5/5",
+                        },
+                        {
+                          company: "Google",
+                          type: "Technical",
+                          rating: "4.1/5",
+                        },
+                      ].map((item, idx) => (
+                        <motion.div
+                          key={idx}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.5, delay: idx * 0.2 }}
+                          className="bg-white/80 backdrop-blur-sm rounded-lg p-3 shadow-sm border border-gray-200/50"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">
+                                {item.company}
+                              </p>
+                              <p className="text-xs text-gray-600">
+                                {item.type}
+                              </p>
+                            </div>
+                            <div className="text-yellow-500 text-sm font-medium">
+                              ⭐ {item.rating}
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
                     </div>
-                    <p className="text-sm text-zinc-600">{item.description}</p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
+                  </div>
+                }
+              />
+
+              {/* Networking Card */}
+              <BentoCard
+                name="Réseau Professionnel"
+                description="Connecte-toi avec +15,000 professionnels de la Finance et du Conseil."
+                Icon={({ className }: { className?: string }) => (
+                  <Icon icon="material-symbols:group" className={className} />
+                )}
+                href="/forum/networking"
+                cta="Rejoindre le réseau"
+                className="col-span-3 lg:col-span-2"
+                background={
+                  <div className="absolute inset-0 bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
+                    <div className="absolute top-6 right-6 grid grid-cols-4 gap-2">
+                      {banks.map((bank, idx) => (
+                        <motion.div
+                          key={bank.id}
+                          initial={{ opacity: 0, scale: 0 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.3, delay: idx * 0.1 }}
+                          className="w-12 h-12 bg-white rounded-full border-2 border-gray-200 flex items-center justify-center overflow-hidden"
+                        >
+                          <img
+                            src={bank.logo_url}
+                            alt={bank.name}
+                            className="w-8 h-8 object-contain"
+                          />
+                        </motion.div>
+                      ))}
+                    </div>
+                    <div className="absolute bottom-6 left-6">
+                      <div className="bg-white/90 backdrop-blur-sm rounded-lg p-4 shadow-sm">
+                        <p className="text-2xl font-bold text-gray-900">
+                          15,000+
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          Professionnels connectés
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                }
+              />
+            </BentoGrid>
+          </motion.div>
 
           <motion.div
-            className="text-center"
+            className="text-center mt-16"
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
@@ -739,7 +930,8 @@ export default function LandingPage() {
             {banks.slice(0, 5).map((bank, index) => (
               <motion.div
                 key={bank.id}
-                className="bg-white/80 backdrop-blur h-16 rounded-lg flex items-center justify-center p-4 border border-zinc-200/50"
+                className="backdrop-blur h-20 w-20 rounded-full flex items-center justify-center p-4 border border-zinc-200/50"
+                style={{ backgroundColor: "#323234" }}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
@@ -748,7 +940,7 @@ export default function LandingPage() {
                 <img
                   src={bank.logo_url}
                   alt={bank.name}
-                  className="max-h-8 w-auto object-contain"
+                  className="max-h-10 w-auto object-contain rounded-full"
                 />
               </motion.div>
             ))}

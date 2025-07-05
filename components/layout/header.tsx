@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { User, LogOut, Settings, PlusCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -28,6 +28,33 @@ interface HeaderProps {
 
 export function Header({ isAuthenticated, profile }: HeaderProps) {
   const router = useRouter();
+  const pathname = usePathname();
+
+  // Determine which app we're in based on the pathname
+  const isTrackerApp = pathname.startsWith("/tracker");
+  const isForumApp = pathname.startsWith("/forum");
+
+  // Get the appropriate title and subtitle based on the app
+  const getAppTitle = () => {
+    if (isTrackerApp) {
+      return {
+        title: "Tracker de stages.",
+        subtitle: "Suivez vos candidatures et gérez vos stages en finance.",
+      };
+    } else if (isForumApp) {
+      return {
+        title: "Forum entretiens.",
+        subtitle: "Le forum BridgeYou des entretiens en finance.",
+      };
+    } else {
+      return {
+        title: "BridgeYou.",
+        subtitle: "Votre plateforme carrière en finance.",
+      };
+    }
+  };
+
+  const { title, subtitle } = getAppTitle();
 
   const handleSignOut = async () => {
     try {
@@ -69,28 +96,30 @@ export function Header({ isAuthenticated, profile }: HeaderProps) {
         <div className="flex h-16 items-center gap-4 py-3">
           {/* Title */}
           <div className="flex-1 pt-4">
-            <h1 className="text-2xl font-medium text-foreground">
-              Forum entretiens.
-            </h1>
+            <h1 className="text-2xl font-medium text-foreground">{title}</h1>
             <h3 className=" font-normal text-xs text-foreground/30">
-              Le forum BridgeYou des entretiens en finance.
+              {subtitle}
             </h3>
           </div>
 
           {/* Right side actions */}
           <div className="flex items-center gap-2 ml-auto">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/forum/create">
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Publier
-              </Link>
-            </Button>
+            {/* Show "Publier" button only for forum app */}
+            {isForumApp && (
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/forum/create">
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  Publier
+                </Link>
+              </Button>
+            )}
 
             {isAuthenticated && profile && (
               <NotificationsPopover userId={profile.id} />
             )}
 
-            {isAuthenticated ? (
+            {/* User menu or auth buttons */}
+            {isAuthenticated && profile ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -99,8 +128,12 @@ export function Header({ isAuthenticated, profile }: HeaderProps) {
                   >
                     <Avatar className="h-8 w-8">
                       <AvatarImage
-                        src={profile?.profile_picture_url}
-                        alt={profile?.first_name || "User"}
+                        src={profile.profile_picture_url}
+                        alt={
+                          profile.first_name
+                            ? `${profile.first_name} ${profile.last_name}`
+                            : profile.username || "User"
+                        }
                       />
                       <AvatarFallback>{getUserInitials()}</AvatarFallback>
                     </Avatar>
@@ -110,26 +143,26 @@ export function Header({ isAuthenticated, profile }: HeaderProps) {
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none">
-                        {profile?.first_name && profile?.last_name
+                        {profile.first_name && profile.last_name
                           ? `${profile.first_name} ${profile.last_name}`
-                          : profile?.username || "Utilisateur"}
+                          : profile.username}
                       </p>
                       <p className="text-xs leading-none text-muted-foreground">
-                        {profile?.email}
+                        {profile.email}
                       </p>
-                      <div className="flex items-center gap-1 pt-1">
-                        <Badge variant="secondary" className="text-xs">
-                          {profile?.tokens || 0} tokens
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="secondary" className="gap-1 text-xs">
+                          <span className="text-yellow-600">⭐</span>
+                          {profile.tokens}
                         </Badge>
-                        {profile?.role !== "user" && (
-                          <Badge variant="outline" className="text-xs">
-                            {profile?.role}
-                          </Badge>
-                        )}
+                        <Badge variant="outline" className="text-xs">
+                          {profile.role}
+                        </Badge>
                       </div>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+
                   <DropdownMenuItem asChild>
                     <Link href="/forum/profile">
                       <User className="mr-2 h-4 w-4" />

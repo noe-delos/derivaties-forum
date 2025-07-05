@@ -7,6 +7,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Header } from "@/components/layout/header";
 import { getPopularTags } from "@/lib/services/search";
 import { User as UserType } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface MainLayoutClientProps {
   children: React.ReactNode;
@@ -32,14 +33,19 @@ export function MainLayoutClient({
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
+  // For admin pages, render without SidebarProvider
+  if (isAdminPage) {
+    return children;
+  }
+
+  // For all other pages (forum and tracker), render with SidebarProvider
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
-        {/* Hide AppSidebar on admin pages */}
-        {!isAdminPage && <AppSidebar isAuthenticated={isAuthenticated} profile={profile} />}
+        <AppSidebar isAuthenticated={isAuthenticated} profile={profile} />
         <div className="flex-1 flex flex-col">
-          {/* Conditionally render Header - hide on profile and admin pages */}
-          {!isProfilePage && !isAdminPage && (
+          {/* Conditionally render Header - hide on profile pages */}
+          {!isProfilePage && (
             <Header
               isAuthenticated={isAuthenticated}
               profile={profile}

@@ -14,21 +14,13 @@ export default async function TrackerPage() {
   }
 
   const { data: profile } = await supabase
-    .from("profiles")
+    .from("users")
     .select("*")
     .eq("id", user.id)
     .single();
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Tracker de stages</h1>
-          <p className="text-muted-foreground mt-2">
-            Suivez vos candidatures et gérez vos stages en finance
-          </p>
-        </div>
-      </div>
       <TrackerInterface />
     </div>
   );

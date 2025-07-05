@@ -22,6 +22,8 @@ CREATE TABLE public.users (
     school text,
     profile_picture_url text,
     banner_url text,
+    linkedin_url text,
+    phone_number text,
     tokens integer DEFAULT 0,
     role user_role DEFAULT 'user',
     is_banned boolean DEFAULT false,
@@ -123,12 +125,14 @@ CREATE TABLE public.corrections (
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-    INSERT INTO public.users (id, email, first_name, last_name)
+    INSERT INTO public.users (id, email, first_name, last_name, linkedin_url, phone_number)
     VALUES (
         new.id,
         new.email,
         new.raw_user_meta_data->>'first_name',
-        new.raw_user_meta_data->>'last_name'
+        new.raw_user_meta_data->>'last_name',
+        new.raw_user_meta_data->>'linkedin_url',
+        new.raw_user_meta_data->>'phone_number'
     );
     RETURN new;
 END;
@@ -697,6 +701,8 @@ CREATE INDEX idx_corrections_post_id ON public.corrections(post_id);
 CREATE INDEX idx_corrections_user_id ON public.corrections(user_id);
 CREATE INDEX idx_corrections_status ON public.corrections(status);
 CREATE INDEX idx_corrections_selected ON public.corrections(is_selected);
+CREATE INDEX idx_users_linkedin_url ON public.users(linkedin_url);
+CREATE INDEX idx_users_phone_number ON public.users(phone_number);
 
 -- Add these statements at the end of the file to properly configure service role bypass
 ALTER TABLE public.users ALTER COLUMN email DROP NOT NULL;

@@ -28,6 +28,16 @@ const signupSchema = z
       .min(2, "Le prénom doit contenir au moins 2 caractères"),
     lastName: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
     email: z.string().email("Email invalide"),
+    linkedinUrl: z
+      .string()
+      .url("URL LinkedIn invalide")
+      .refine((url) => url.includes("linkedin.com"), {
+        message: "L'URL doit être un profil LinkedIn valide",
+      }),
+    phoneNumber: z
+      .string()
+      .min(10, "Le numéro de téléphone doit contenir au moins 10 caractères")
+      .regex(/^[+]?[\d\s\-\(\)]+$/, "Format de numéro de téléphone invalide"),
     password: z
       .string()
       .min(8, "Le mot de passe doit contenir au moins 8 caractères")
@@ -57,6 +67,8 @@ export function SignupForm() {
       firstName: "",
       lastName: "",
       email: "",
+      linkedinUrl: "",
+      phoneNumber: "",
       password: "",
       confirmPassword: "",
     },
@@ -73,6 +85,8 @@ export function SignupForm() {
           data: {
             first_name: data.firstName,
             last_name: data.lastName,
+            linkedin_url: data.linkedinUrl,
+            phone_number: data.phoneNumber,
           },
         },
       });
@@ -171,6 +185,58 @@ export function SignupForm() {
               </FormItem>
             )}
           />
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="linkedinUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-gray-700 font-medium">
+                    Profil LinkedIn <span className="text-red-500">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="https://linkedin.com/in/votre-profil"
+                      type="url"
+                      disabled={isLoading}
+                      className="h-12 bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-blue-500 rounded-xl"
+                      {...field}
+                    />
+                  </FormControl>
+                  <p className="text-xs text-gray-500 mt-1">
+                    URL complète de votre profil LinkedIn professionnel
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="phoneNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-gray-700 font-medium">
+                    Numéro de téléphone <span className="text-red-500">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="+33 6 12 34 56 78"
+                      type="tel"
+                      disabled={isLoading}
+                      className="h-12 bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-blue-500 rounded-xl"
+                      {...field}
+                    />
+                  </FormControl>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Votre numéro de téléphone avec l'indicatif pays
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
           <FormField
             control={form.control}

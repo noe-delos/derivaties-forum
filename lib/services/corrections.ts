@@ -23,7 +23,7 @@ export async function createCorrection(data: CreateCorrectionData, isAuthenticat
     .insert([data])
     .select(`
       *,
-      user:users(id, username, first_name, last_name, profile_picture_url),
+      user:users!corrections_user_id_fkey(id, username, first_name, last_name, profile_picture_url),
       post:posts(id, title)
     `)
     .single();
@@ -42,8 +42,8 @@ export async function getCorrectionsByPostId(postId: string, isAuthenticated: bo
     .from("corrections")
     .select(`
       *,
-      user:users(id, username, first_name, last_name, profile_picture_url),
-      moderator:moderator_id(id, username, first_name, last_name)
+      user:users!corrections_user_id_fkey(id, username, first_name, last_name, profile_picture_url),
+      moderator:users!corrections_moderator_id_fkey(id, username, first_name, last_name)
     `)
     .eq("post_id", postId)
     .eq("status", "approved")
@@ -63,8 +63,8 @@ export async function getSelectedCorrectionForPost(postId: string, isAuthenticat
     .from("corrections")
     .select(`
       *,
-      user:users(id, username, first_name, last_name, profile_picture_url),
-      moderator:moderator_id(id, username, first_name, last_name)
+      user:users!corrections_user_id_fkey(id, username, first_name, last_name, profile_picture_url),
+      moderator:users!corrections_moderator_id_fkey(id, username, first_name, last_name)
     `)
     .eq("post_id", postId)
     .eq("status", "approved")
@@ -85,7 +85,7 @@ export async function getPendingCorrections(isAuthenticated: boolean = false) {
     .from("corrections")
     .select(`
       *,
-      user:users(id, username, first_name, last_name, profile_picture_url),
+      user:users!corrections_user_id_fkey(id, username, first_name, last_name, profile_picture_url),
       post:posts(id, title, category, type)
     `)
     .eq("status", "pending")
@@ -105,9 +105,9 @@ export async function getCorrectionById(correctionId: string, isAuthenticated: b
     .from("corrections")
     .select(`
       *,
-      user:users(id, username, first_name, last_name, profile_picture_url),
+      user:users!corrections_user_id_fkey(id, username, first_name, last_name, profile_picture_url),
       post:posts(id, title, content, category, type),
-      moderator:moderator_id(id, username, first_name, last_name)
+      moderator:users!corrections_moderator_id_fkey(id, username, first_name, last_name)
     `)
     .eq("id", correctionId)
     .single();
@@ -137,9 +137,9 @@ export async function updateCorrectionStatus(
     .eq("id", correctionId)
     .select(`
       *,
-      user:users(id, username, first_name, last_name, profile_picture_url),
+      user:users!corrections_user_id_fkey(id, username, first_name, last_name, profile_picture_url),
       post:posts(id, title),
-      moderator:moderator_id(id, username, first_name, last_name)
+      moderator:users!corrections_moderator_id_fkey(id, username, first_name, last_name)
     `)
     .single();
 
@@ -158,7 +158,7 @@ export async function getUserCorrections(userId: string, isAuthenticated: boolea
     .select(`
       *,
       post:posts(id, title, category, type),
-      moderator:moderator_id(id, username, first_name, last_name)
+      moderator:users!corrections_moderator_id_fkey(id, username, first_name, last_name)
     `)
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
