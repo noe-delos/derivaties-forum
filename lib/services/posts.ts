@@ -24,6 +24,7 @@ export async function fetchPosts({
   filters?: SearchFilters;
   isAuthenticated?: boolean;
 }): Promise<PaginatedResponse<Post>> {
+  // Use admin client to ensure we can fetch corrections regardless of RLS
   const supabase = getAdminSupabaseClient();
 
   const startIndex = pageParam * ITEMS_PER_PAGE;
@@ -48,7 +49,23 @@ export async function fetchPosts({
         logo_url
       ),
       media:post_media(*),
-      user_vote:votes!votes_post_id_fkey(vote_type)
+      user_vote:votes!votes_post_id_fkey(vote_type),
+      selected_correction:corrections!corrections_post_id_fkey(
+        id,
+        content,
+        status,
+        is_selected,
+        tokens_awarded,
+        created_at,
+        user:users!corrections_user_id_fkey(
+          id,
+          username,
+          first_name,
+          last_name,
+          profile_picture_url,
+          role
+        )
+      )
     `,
       { count: "exact" }
     )
@@ -103,7 +120,9 @@ export async function fetchPosts({
 
   // Serialize the data to ensure it can be passed to client components
   // This converts Date objects to strings and ensures serialization compatibility
-  const serializedData = JSON.parse(JSON.stringify(posts || []));
+
+  console.log("🔍 @@@@@@@@", posts);
+  const serializedData = JSON.parse(JSON.stringify(posts));
 
   return {
     data: serializedData,
@@ -119,9 +138,8 @@ export async function fetchPost(
   id: string,
   isAuthenticated = false
 ): Promise<Post> {
-  const supabase = isAuthenticated
-    ? await createClient()
-    : await createServiceClient();
+  // Use admin client to ensure we can fetch corrections regardless of RLS
+  const supabase = getAdminSupabaseClient();
 
   let postQuery = supabase
     .from("posts")
@@ -142,7 +160,23 @@ export async function fetchPost(
         logo_url
       ),
       media:post_media(*),
-      user_vote:votes!votes_post_id_fkey(vote_type)
+      user_vote:votes!votes_post_id_fkey(vote_type),
+      selected_correction:corrections!corrections_post_id_fkey(
+        id,
+        content,
+        status,
+        is_selected,
+        tokens_awarded,
+        created_at,
+        user:users!corrections_user_id_fkey(
+          id,
+          username,
+          first_name,
+          last_name,
+          profile_picture_url,
+          role
+        )
+      )
     `
     )
     .eq("id", id)
@@ -155,12 +189,26 @@ export async function fetchPost(
 
   const { data: post, error } = await postQuery.single();
 
+  console.log("🔍 fetchPost - Post query result:", { post, error });
+  console.log(
+    "🔍 fetchPost - Selected corrections:",
+    post?.selected_correction
+  );
+
   if (error) {
     throw new Error(error.message);
   }
 
+  // Process post to add corrected flag based on approved corrections
+  const processedPost = {
+    ...post,
+    corrected:
+      post.selected_correction &&
+      post.selected_correction.some((c: any) => c.status === "approved"),
+  };
+
   // Serialize the data for safe client transfer
-  return JSON.parse(JSON.stringify(post));
+  return JSON.parse(JSON.stringify(processedPost));
 }
 
 export async function searchPosts({
@@ -174,9 +222,8 @@ export async function searchPosts({
   pageParam?: number;
   isAuthenticated?: boolean;
 }): Promise<PaginatedResponse<Post>> {
-  const supabase = isAuthenticated
-    ? await createClient()
-    : await createServiceClient();
+  // Use admin client to ensure we can fetch corrections regardless of RLS
+  const supabase = getAdminSupabaseClient();
 
   const startIndex = pageParam * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE - 1;
@@ -200,7 +247,23 @@ export async function searchPosts({
         logo_url
       ),
       media:post_media(*),
-      user_vote:votes!votes_post_id_fkey(vote_type)
+      user_vote:votes!votes_post_id_fkey(vote_type),
+      selected_correction:corrections!corrections_post_id_fkey(
+        id,
+        content,
+        status,
+        is_selected,
+        tokens_awarded,
+        created_at,
+        user:users!corrections_user_id_fkey(
+          id,
+          username,
+          first_name,
+          last_name,
+          profile_picture_url,
+          role
+        )
+      )
     `,
       { count: "exact" }
     )
@@ -237,8 +300,16 @@ export async function searchPosts({
     throw new Error(error.message);
   }
 
+  // Process posts to add corrected flag based on approved corrections
+  const processedPosts = (posts || []).map((post) => ({
+    ...post,
+    corrected:
+      post.selected_correction &&
+      post.selected_correction.some((c: any) => c.status === "approved"),
+  }));
+
   // Serialize the data for safe client transfer
-  const serializedData = JSON.parse(JSON.stringify(posts || []));
+  const serializedData = JSON.parse(JSON.stringify(processedPosts));
 
   return {
     data: serializedData,

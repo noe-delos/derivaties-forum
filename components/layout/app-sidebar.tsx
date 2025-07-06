@@ -20,8 +20,15 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { User as UserType, Bank } from "@/lib/types";
 import { fetchBanks } from "@/lib/services/banks";
@@ -100,13 +107,9 @@ const adminItems = [
 const categoryItems = [
   {
     title: "Profile",
-    key: "entretien_sales_trading",
+    key: "profile",
     icon: "fluent:person-20-filled",
-  },
-  {
-    title: "Notifications",
-    key: "conseils_ecole",
-    icon: "tabler:bell-filled",
+    url: "/forum/profile",
   },
 ];
 
@@ -354,45 +357,78 @@ export function AppSidebar({ isAuthenticated, profile }: AppSidebarProps) {
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild={!item.comingSoon}
-                    isActive={pathname === item.url && !item.comingSoon}
-                    className={cn(
-                      "px-3 pl-5 py-3",
-                      item.comingSoon && " cursor-not-allowed"
-                    )}
-                  >
-                    {item.comingSoon ? (
-                      <Link
-                        href={""}
-                        className="flex flex-row items-center gap-3 justify-between w-full cursor-default"
-                      >
-                        <div className="flex items-center gap-2.5 opacity-30">
+                <div key={item.title}>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild={!item.comingSoon}
+                      isActive={pathname === item.url && !item.comingSoon}
+                      tooltip={isCollapsed && !item.comingSoon ? item.title : undefined}
+                      className={cn(
+                        "px-3 pl-5 py-2 transition-all duration-200",
+                        item.comingSoon && " cursor-not-allowed",
+                        isCollapsed && "justify-center px-2"
+                      )}
+                    >
+                      {item.comingSoon ? (
+                        <Link
+                          href={""}
+                          className="flex flex-row items-center gap-3 justify-between w-full cursor-default"
+                        >
+                          <div className="flex items-center gap-2.5 opacity-30">
+                            <Icon
+                              icon={item.icon}
+                              className="size-4 text-foreground/50"
+                            />
+                            {!isCollapsed && <span>{item.title}</span>}
+                          </div>
+                          {!isCollapsed && (
+                            <Badge
+                              variant="destructive"
+                              className="text-[0.6rem] bg-red-600/10 text-red-600"
+                            >
+                              coming soon!
+                            </Badge>
+                          )}
+                        </Link>
+                      ) : (
+                        <Link href={item.url}>
                           <Icon
                             icon={item.icon}
-                            className="size-4 text-foreground/50"
+                            className="size-5 text-foreground/50"
                           />
-                          <span>{item.title}</span>
-                        </div>
-                        <Badge
-                          variant="destructive"
-                          className="text-[0.6rem] bg-red-600/10 text-red-600"
+                          {!isCollapsed && <span>{item.title}</span>}
+                        </Link>
+                      )}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  {/* Show "Mes entretiens" as submenu under Forum when in forum app */}
+                  {item.title === "Forum" &&
+                    pathname.startsWith("/forum") &&
+                    isAuthenticated && (
+                      <SidebarMenuItem className={cn(
+                        "transition-all duration-200",
+                        isCollapsed ? "ml-0" : "ml-8"
+                      )}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={pathname === "/forum/mes-entretiens"}
+                          tooltip={isCollapsed ? "Mes entretiens" : undefined}
+                          className={cn(
+                            "px-3 pl-5 py-2 transition-all duration-200",
+                            isCollapsed && "justify-center px-2 pl-2"
+                          )}
                         >
-                          coming soon!
-                        </Badge>
-                      </Link>
-                    ) : (
-                      <Link href={item.url}>
-                        <Icon
-                          icon={item.icon}
-                          className="size-7 text-foreground/50"
-                        />
-                        <span>{item.title}</span>
-                      </Link>
+                          <Link href="/forum/mes-entretiens">
+                            <Icon
+                              icon="majesticons:coins"
+                              className="size-4 text-foreground/50"
+                            />
+                            {!isCollapsed && <span className="text-sm">Mes entretiens</span>}
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
                     )}
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                </div>
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -404,26 +440,28 @@ export function AppSidebar({ isAuthenticated, profile }: AppSidebarProps) {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="px-0">
-              {categoryItems.map((item) => {
-                const isActive = pathname === `/forum/categories/${item.key}`;
+              {categoryItems.map((item: any) => {
+                const href = profile ? `/forum/profile/${profile.id}` : `/forum/profile`;
+                const isActive = pathname.startsWith('/forum/profile');
 
                 return (
                   <SidebarMenuItem key={item.key} className="p-0">
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
-                      className={"px-6 py-0"}
+                      tooltip={isCollapsed ? item.title : undefined}
+                      className={cn(
+                        "px-6 py-2 transition-all duration-200",
+                        isCollapsed && "justify-center px-2"
+                      )}
                     >
-                      <Link
-                        href={`/forum/categories/${item.key}`}
-                        className="p-0"
-                      >
+                      <Link href={href} className="p-0">
                         <span className="font-medium text-foreground flex flex-row items-center gap-3">
                           <Icon
                             icon={item.icon}
                             className="text-foreground/50 size-4"
                           />
-                          {item.title}
+                          {!isCollapsed && item.title}
                         </span>
                       </Link>
                     </SidebarMenuButton>
@@ -437,20 +475,48 @@ export function AppSidebar({ isAuthenticated, profile }: AppSidebarProps) {
 
       {isAuthenticated && profile && (
         <SidebarFooter>
-          <SidebarGroup>
+          <SidebarGroup className={cn(
+            "group-data-[collapsible=icon]:px-0"
+          )}>
             <SidebarGroupContent>
-              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                <Icon
-                  icon="mdi-light:coin"
-                  className="h-5 w-5 text-amber-500"
-                />
-                <div className="flex flex-col min-w-0">
-                  <span className="text-sm font-medium">Mes tokens</span>
-                  <Badge variant="secondary" className="w-fit">
-                    {profile.tokens}
-                  </Badge>
+              {isCollapsed ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className={cn(
+                        "flex items-center bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-950/20 dark:to-yellow-950/20 rounded-lg transition-all duration-200",
+                        "p-2 justify-center cursor-pointer"
+                      )}>
+                        <Icon
+                          icon="majesticons:coins"
+                          className="h-5 w-5 text-amber-600 transition-all duration-200"
+                        />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" align="center">
+                      <p>Mes crédits: {profile.tokens}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                <div className={cn(
+                  "flex items-center gap-3 bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-950/20 dark:to-yellow-950/20 rounded-lg transition-all duration-200",
+                  "p-3 border border-orange-200/50 dark:border-orange-800/50"
+                )}>
+                  <Icon
+                    icon="majesticons:coins"
+                    className="h-5 w-5 text-amber-600 transition-all duration-200"
+                  />
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span className="text-sm font-medium text-orange-900 dark:text-orange-100">
+                      Mes crédits:
+                    </span>
+                    <span className="text-sm font-bold text-orange-700 dark:text-orange-300">
+                      {profile.tokens}
+                    </span>
+                  </div>
                 </div>
-              </div>
+              )}
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarFooter>

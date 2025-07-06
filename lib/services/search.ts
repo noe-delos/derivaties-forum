@@ -110,6 +110,8 @@ Context: This is a forum about finance, trading, internships, and careers in:
 - Quantitative finance & Hedge funds careers
 - Banking industry insights and networking
 
+IMPORTANT: This forum primarily contains INTERVIEW content (entretiens) for various banks and financial institutions.
+
 Available categories:
 - entretien_sales_trading: Sales & Trading interviews (includes interview questions, prep, experiences)
 - conseils_ecole: School advice (university choices, courses, academic guidance)
@@ -147,6 +149,8 @@ Extract and return ONLY a JSON object with these fields:
 
 CRITICAL Bank Detection Rules:
 - When "entretiens de [bank]" or "entretiens chez [bank]" is mentioned → focus on bank filtering, be flexible with categories
+- When user asks for "trucs de [bank]" or "donne moi des [anything] de [bank]" → assume they want interview content for that bank
+- When user says "je veux passer des entretiens en finance" → leave banks empty to show all interview content
 - Map common bank aliases to exact names:
   * "Goldman" or "GS" → "Goldman Sachs"
   * "SocGen" or "Société Générale" or "Societe Generale" → "Société Générale"
@@ -156,10 +160,11 @@ CRITICAL Bank Detection Rules:
 - When a specific bank is mentioned:
   * Include ONLY that bank in "banks" array
   * Remove bank names from searchTerms to avoid keyword conflicts
-  * Leave "categories" empty OR include only if explicitly mentioned (not implied)
+  * For generic requests like "trucs" or "infos", automatically include interview-related categories (entretien_sales_trading)
   * Leave "tags" empty to allow broader matching
   * Set higher confidence (0.8+) when specific banks are detected
 - Prioritize bank-specific content over strict categorization
+- For vague requests about a bank, assume user wants interview experiences and transcripts
 
 Enhanced Rules:
 - Extract ALL relevant keywords EXCEPT detected bank names
@@ -169,7 +174,14 @@ Enhanced Rules:
 - Parse temporal expressions ("cette année", "2024", "recent")
 - Set appropriate sortBy: "popular" for "meilleur/best", "recent" for "récent/latest", "comments" for "discussion/débat"
 - When banks are specified, focus results on that bank only
-- Include cities if mentioned or implied`;
+- Include cities if mentioned or implied
+
+French Query Understanding:
+- "je veux passer des entretiens en [field]" → show all interview content, optionally filter by field
+- "donne moi des trucs/infos/conseils de [bank]" → banks: ["bank"], categories: ["entretien_sales_trading"]
+- "comment se préparer pour [bank]" → banks: ["bank"], categories: ["entretien_sales_trading"], types: ["question", "transcript_entretien"]
+- Generic requests about banks should default to interview content since that's the primary content
+- Be flexible with colloquial French (trucs, infos, etc.) and understand they usually mean interview-related content`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4.1",
@@ -177,7 +189,7 @@ Enhanced Rules:
         {
           role: "system",
           content:
-            "You are a search query analyzer for a French trading forum of finance interviews. Return only valid JSON.",
+            "You are a search query analyzer for a French trading forum focused on finance interviews. This forum primarily contains interview experiences, questions, and transcripts for major banks. When users ask about a bank, they typically want interview content. Return only valid JSON.",
         },
         {
           role: "user",
@@ -295,14 +307,21 @@ export async function enhancedSearchPosts({
     // Special handling: If specific banks are detected, prioritize bank filtering and be more flexible with other filters
     const hasBankSpecified = bankIds.length > 0;
     
+    // If a bank is specified with generic terms, automatically include interview category
+    const hasGenericTermsWithBank = hasBankSpecified && searchAnalysis.searchTerms.some(term => 
+      ["trucs", "infos", "conseils", "prep", "preparation"].includes(term.toLowerCase())
+    );
+    
     effectiveFilters = {
       ...effectiveFilters,
       category:
         effectiveFilters.category ||
-        // Only apply category filter if no specific bank mentioned, or if category is very confident
-        (!hasBankSpecified && searchAnalysis.categories.length === 1
-          ? searchAnalysis.categories[0]
-          : undefined),
+        // If bank + generic terms, default to interview category
+        (hasGenericTermsWithBank ? "entretien_sales_trading" :
+         // Otherwise, only apply category filter if no specific bank mentioned, or if category is very confident
+         (!hasBankSpecified && searchAnalysis.categories.length === 1
+           ? searchAnalysis.categories[0]
+           : searchAnalysis.categories.length === 1 ? searchAnalysis.categories[0] : undefined)),
       type:
         effectiveFilters.type ||
         (searchAnalysis.types.length === 1
@@ -353,7 +372,23 @@ export async function enhancedSearchPosts({
         logo_url
       ),
       media:post_media(*),
-      user_vote:votes!votes_post_id_fkey(vote_type)
+      user_vote:votes!votes_post_id_fkey(vote_type),
+      selected_correction:corrections!corrections_post_id_fkey(
+        id,
+        content,
+        status,
+        is_selected,
+        tokens_awarded,
+        created_at,
+        user:users!corrections_user_id_fkey(
+          id,
+          username,
+          first_name,
+          last_name,
+          profile_picture_url,
+          role
+        )
+      )
     `,
       { count: "exact" }
     )
@@ -362,11 +397,10 @@ export async function enhancedSearchPosts({
   // Apply search terms - search in title and content
   // Special handling: If bank is specified and search terms are generic (like "entretiens"), make text search optional
   const hasBankFilter = effectiveFilters.banks && effectiveFilters.banks.length > 0;
-  const hasGenericSearchTerms = searchTerms.length === 1 && 
-    (searchTerms[0].toLowerCase() === "entretiens" || 
-     searchTerms[0].toLowerCase() === "entretien" ||
-     searchTerms[0].toLowerCase() === "stages" ||
-     searchTerms[0].toLowerCase() === "stage");
+  const hasGenericSearchTerms = searchTerms.length <= 2 && 
+    searchTerms.some(term => 
+      ["entretiens", "entretien", "stages", "stage", "trucs", "infos", "conseils", "prep", "preparation"].includes(term.toLowerCase())
+    );
   
   if (searchTerms.length > 0 && !(hasBankFilter && hasGenericSearchTerms)) {
     console.log("🔍 Applying search terms to query...");
@@ -460,8 +494,14 @@ export async function enhancedSearchPosts({
     hasNextPage: count && (pageParam + 1) * ITEMS_PER_PAGE < count,
   });
 
+  // Process posts to add corrected flag based on approved corrections
+  const processedPosts = (posts || []).map(post => ({
+    ...post,
+    corrected: post.selected_correction && post.selected_correction.some((c: any) => c.status === 'approved')
+  }));
+
   // Serialize the data for safe client transfer
-  const serializedData = JSON.parse(JSON.stringify(posts || []));
+  const serializedData = JSON.parse(JSON.stringify(processedPosts));
 
   return {
     data: serializedData,

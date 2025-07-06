@@ -75,6 +75,7 @@ export interface Post {
   bank?: Bank;
   media?: PostMedia[];
   user_vote?: Vote;
+  selected_correction?: Correction[];
 }
 
 export interface PostMedia {

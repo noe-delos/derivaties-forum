@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-query";
 
 import { PostCard } from "@/components/posts/post-card";
-import { CorrectionsSection } from "@/components/corrections/corrections-section";
+import { CorrectionsSectionWrapper } from "@/components/corrections/corrections-section-wrapper";
 import { BackButton } from "@/components/ui/back-button";
 import { fetchPost } from "@/lib/services/posts";
 import { createClient } from "@/utils/supabase/server";
@@ -41,6 +41,21 @@ export default async function PostPage({ params }: PostPageProps) {
     profile = data as UserType;
   }
 
+  // Check if user has purchased this post
+  let isPurchased = false;
+  let isCorrectionPurchased = false;
+  if (isAuthenticated && profile) {
+    const { data: purchaseData } = await supabase
+      .from("user_purchased_content")
+      .select("id, content_type")
+      .eq("user_id", profile.id)
+      .eq("post_id", id);
+
+    const purchases = purchaseData || [];
+    isPurchased = purchases.some(p => p.content_type === "interview");
+    isCorrectionPurchased = purchases.some(p => p.content_type === "correction");
+  }
+
   const queryClient = new QueryClient();
 
   try {
@@ -55,13 +70,6 @@ export default async function PostPage({ params }: PostPageProps) {
     // Get the post data to check if it exists
     const post = await fetchPost(id, isAuthenticated);
 
-    console.log(
-      "&@@@@",
-      isAuthenticated,
-      profile,
-      post,
-      isAuthenticated && !post.is_public
-    );
     return (
       <HydrationBoundary state={dehydrate(queryClient)}>
         <div className="max-w-4xl space-y-2 pl-10">
@@ -71,18 +79,20 @@ export default async function PostPage({ params }: PostPageProps) {
           {/* Post */}
           <PostCard
             post={post}
-            isBlurred={!isAuthenticated && !post.is_public}
             showActions={isAuthenticated || post.is_public}
             expanded={true}
             isAuthenticated={isAuthenticated}
             profile={profile}
+            isPurchased={isPurchased}
           />
 
           {/* Corrections */}
-          <CorrectionsSection 
-            post={post} 
-            user={profile} 
-            isAuthenticated={isAuthenticated} 
+          <CorrectionsSectionWrapper
+            post={post}
+            user={profile}
+            isAuthenticated={isAuthenticated}
+            isCorrectionPurchased={isCorrectionPurchased}
+            userTokens={profile?.tokens || 0}
           />
         </div>
       </HydrationBoundary>

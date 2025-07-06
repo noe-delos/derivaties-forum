@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
-import { Loader2, X, ChevronDownIcon } from "lucide-react";
+import { Loader2, X, ChevronDownIcon, Sparkles } from "lucide-react";
 import { Icon } from "@iconify/react";
 
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ import {
   linkPostMedia,
 } from "@/lib/actions/posts";
 import { fetchBanks } from "@/lib/services/banks";
+import { generateTags } from "@/lib/services/ai-tags";
 import { cn } from "@/lib/utils";
 
 const createPostSchema = z.object({
@@ -47,8 +48,7 @@ const createPostSchema = z.object({
     "fichier_attache",
   ]),
   bank_id: z.string().min(1, "Vous devez sélectionner une banque"),
-  tags: z.array(z.string()).min(1, "Au moins un tag est requis"),
-  is_public: z.boolean(),
+  tags: z.array(z.string()).min(2, "Au moins deux tags sont requis"),
   city: z.string().min(1, "Vous devez sélectionner une ville"),
   custom_city: z.string().optional(),
 });
@@ -186,6 +186,7 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
   const [banks, setBanks] = useState<Bank[]>([]);
   const [banksLoading, setBanksLoading] = useState(true);
   const [customCityInput, setCustomCityInput] = useState("");
+  const [isGeneratingTags, setIsGeneratingTags] = useState(false);
 
   const form = useForm<CreatePostForm>({
     resolver: zodResolver(createPostSchema),
@@ -195,7 +196,6 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
       type: "question",
       bank_id: "",
       tags: [],
-      is_public: true,
       city: "paris",
       custom_city: "",
     },
@@ -210,7 +210,9 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
   const tags = watch("tags");
   const selectedBankId = watch("bank_id");
   const selectedCity = watch("city");
-  const isPublic = watch("is_public");
+  const title = watch("title");
+  const category = watch("category");
+  const type = watch("type");
 
   // Fetch banks on component mount
   useEffect(() => {
@@ -246,6 +248,38 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
     setValue("bank_id", bankId);
   };
 
+  const generateAITags = async () => {
+    if (!title || !category) {
+      toast.error("Veuillez remplir le titre et sélectionner une catégorie d'abord");
+      return;
+    }
+
+    try {
+      setIsGeneratingTags(true);
+      
+      const selectedBank = banks.find(bank => bank.id === selectedBankId);
+      const bankName = selectedBank?.name;
+      
+      const generatedTags = await generateTags({
+        title,
+        category,
+        bankName,
+        type,
+      });
+
+      // Add generated tags to existing tags, avoiding duplicates
+      const newTags = [...new Set([...tags, ...generatedTags])];
+      setValue("tags", newTags);
+      
+      toast.success(`${generatedTags.length} tags générés par IA !`);
+    } catch (error) {
+      console.error("Error generating tags:", error);
+      toast.error("Erreur lors de la génération des tags");
+    } finally {
+      setIsGeneratingTags(false);
+    }
+  };
+
   const onSubmit = async (formData: CreatePostForm) => {
     if (isLoading) return;
 
@@ -266,7 +300,7 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
         type: formData.type,
         bank_id: formData.bank_id,
         tags: formData.tags,
-        is_public: formData.is_public,
+        is_public: true,
         userId,
         city:
           formData.city === "autre"
@@ -456,21 +490,37 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
           {/* Tags */}
           <div className="space-y-2">
             <Label>
-              Tags
+              Tags (minimum 2)
               <RequiredAsterisk />
             </Label>
-            <Input
-              placeholder="Ajouter un tag et appuyer sur Entrée..."
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  addTag();
-                }
-              }}
-              className="py-6 rounded-2xl shadow-soft hover:shadow-soft-md transition-shadow cursor-pointer placeholder:text-foreground/20"
-            />
+            <div className="flex gap-2">
+              <Input
+                placeholder="Ajouter un tag et appuyer sur Entrée..."
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addTag();
+                  }
+                }}
+                className="flex-1 py-6 rounded-2xl shadow-soft hover:shadow-soft-md transition-shadow cursor-pointer placeholder:text-foreground/20"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={generateAITags}
+                disabled={!title || !category || isGeneratingTags}
+                className="py-6 px-4 rounded-2xl shadow-soft hover:shadow-soft-md transition-shadow whitespace-nowrap"
+              >
+                {isGeneratingTags ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Sparkles className="h-4 w-4 mr-2" />
+                )}
+                Générer par IA
+              </Button>
+            </div>
             {tags.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {tags.map((tag) => (
@@ -498,28 +548,6 @@ export function CreatePostForm({ userId }: CreatePostFormProps) {
             )}
           </div>
 
-          {/* Public/Private */}
-          <div className="space-y-2">
-            <Label>Visibilité</Label>
-            <Button
-              type="button"
-              variant="outline"
-              className={cn(
-                "py-6 px-4 rounded-xl border-2 border-dashed transition-all cursor-pointer",
-                isPublic
-                  ? "border-dashed border-primary bg-primary/5 text-primary hover:bg-primary/10"
-                  : "border-dashed border-muted-foreground/30 hover:border-muted-foreground/50"
-              )}
-              onClick={() => setValue("is_public", !isPublic)}
-            >
-              {isPublic ? "Publique" : "Privé"}
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              {isPublic
-                ? "Visible par tous les utilisateurs"
-                : "Visible uniquement par les utilisateurs connectés"}
-            </p>
-          </div>
         </CardContent>
       </Card>
 

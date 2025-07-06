@@ -64,8 +64,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           data: { session },
         } = await supabase.auth.getSession();
 
-        console.log('Initial session:', session);
-
         if (session?.user) {
           setUser(session.user);
           await fetchProfile(session.user.id);
@@ -88,10 +86,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state change:', event, session);
-      
+      console.log("Auth state change:", event, session);
+
       setIsLoading(true);
-      
+
       try {
         if (event === "SIGNED_IN" && session?.user) {
           setUser(session.user);
@@ -107,16 +105,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch (error) {
-        console.error('Error handling auth state change:', error);
+        console.error("Error handling auth state change:", error);
       } finally {
         setIsLoading(false);
       }
     });
 
+    // Listen for custom refresh-auth events (e.g., after purchases)
+    const handleRefreshAuth = async () => {
+      if (user?.id) {
+        await fetchProfile(user.id);
+      }
+    };
+
+    window.addEventListener("refresh-auth", handleRefreshAuth);
+
     return () => {
       subscription.unsubscribe();
+      window.removeEventListener("refresh-auth", handleRefreshAuth);
     };
-  }, [supabase]);
+  }, [supabase, user?.id]);
 
   return (
     <AuthContext.Provider

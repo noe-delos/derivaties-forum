@@ -46,6 +46,7 @@ export function CorrectionForm({
       await createCorrection(
         {
           post_id: post.id,
+          user_id: user.id,
           content: content.trim(),
         },
         isAuthenticated

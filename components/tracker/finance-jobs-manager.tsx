@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Icon } from "@iconify/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,18 +46,32 @@ export function FinanceJobsManager() {
   const [filters, setFilters] = useState<FinanceJobFilters>({});
   const [page, setPage] = useState(1);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<string>('created_at');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sortBy, setSortBy] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
   const pageSize = 20;
 
   // Memoize the query key to prevent unnecessary re-renders
-  const queryKey = useMemo(() => [
-    "finance-jobs", 
-    JSON.stringify(filters), 
-    page, 
-    sortBy, 
-    sortOrder
-  ], [filters, page, sortBy, sortOrder]);
+  const queryKey = useMemo(() => {
+    // Create a stable key by sorting filter object keys
+    const sortedFilters = Object.keys(filters)
+      .sort()
+      .reduce((result, key) => {
+        const filterKey = key as keyof FinanceJobFilters;
+        const value = filters[filterKey];
+        if (value !== undefined && value !== null && value !== '') {
+          (result as any)[filterKey] = value;
+        }
+        return result;
+      }, {} as FinanceJobFilters);
+    
+    return [
+      "finance-jobs", 
+      sortedFilters, 
+      page, 
+      sortBy || 'default', 
+      sortOrder || 'default'
+    ];
+  }, [filters, page, sortBy, sortOrder]);
 
   const {
     data: jobsData,
@@ -68,35 +82,43 @@ export function FinanceJobsManager() {
     queryKey,
     queryFn: async () => {
       try {
+        // Safety check: ensure page is valid
+        if (page < 1) {
+          throw new Error('Invalid page number');
+        }
+        
         console.log('Fetching finance jobs with:', { filters, page, pageSize });
         const result = await fetchFinanceJobs(supabase, filters, page, pageSize);
         console.log('Finance jobs result:', result);
 
-        // Apply sorting
-        const sorted = [...result.data].sort((a, b) => {
-          let aVal: any = a[sortBy as keyof typeof a];
-          let bVal: any = b[sortBy as keyof typeof b];
-          
-          if (aVal === null) aVal = '';
-          if (bVal === null) bVal = '';
-          
-          if (sortBy === 'opening_date' || sortBy === 'closing_date') {
-            aVal = aVal ? new Date(aVal as string).getTime() : 0;
-            bVal = bVal ? new Date(bVal as string).getTime() : 0;
+        // Apply sorting only if sortBy and sortOrder are set
+        let processedData = result.data;
+        
+        if (sortBy && sortOrder) {
+          processedData = [...result.data].sort((a, b) => {
+            let aVal: any = a[sortBy as keyof typeof a];
+            let bVal: any = b[sortBy as keyof typeof b];
+            
+            if (aVal === null) aVal = '';
+            if (bVal === null) bVal = '';
+            
+            if (sortBy === 'opening_date' || sortBy === 'closing_date') {
+              aVal = aVal ? new Date(aVal as string).getTime() : 0;
+              bVal = bVal ? new Date(bVal as string).getTime() : 0;
+            }
+            
+            if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+            if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+            return 0;
+          });
+        } else {
+          // If no sorting applied, mix up the job types for variety
+          if (!filters.job_type || filters.job_type === "all") {
+            processedData = [...result.data].sort(() => Math.random() - 0.5);
           }
-          
-          if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
-          if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
-          return 0;
-        });
-
-        // If no job type filter is selected, mix up the job types (but respect sorting)
-        if ((!filters.job_type || filters.job_type === "all") && sortBy === 'created_at') {
-          const shuffled = [...sorted].sort(() => Math.random() - 0.5);
-          return { ...result, data: shuffled };
         }
 
-        return { ...result, data: sorted };
+        return { ...result, data: processedData };
       } catch (error) {
         console.error('Error in finance jobs query:', error);
         throw error;
@@ -104,6 +126,7 @@ export function FinanceJobsManager() {
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchInterval: false, // Disable auto-refetch to prevent infinite loops
+    refetchOnWindowFocus: false, // Prevent refetch on window focus
     retry: 3,
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
@@ -128,10 +151,28 @@ export function FinanceJobsManager() {
     setFilters((prev) => {
       // Only update if value actually changed
       if (prev[key] === value) return prev;
-      return { ...prev, [key]: value };
+      
+      // Clean up undefined values
+      const newFilters = { ...prev };
+      if (value === undefined || value === null || value === '') {
+        delete newFilters[key];
+      } else {
+        newFilters[key] = value;
+      }
+      return newFilters;
     });
     setPage(1);
   }, []);
+
+  const handlePageChange = useCallback((newPage: number) => {
+    if (!jobsData?.count) return;
+    const totalPages = Math.ceil(jobsData.count / pageSize);
+    
+    // Ensure page is within valid bounds
+    if (newPage >= 1 && newPage <= totalPages) {
+      setPage(newPage);
+    }
+  }, [jobsData?.count, pageSize]);
 
   const clearFilters = useCallback(() => {
     setFilters({});
@@ -140,13 +181,30 @@ export function FinanceJobsManager() {
 
   const handleSort = useCallback((column: string) => {
     if (sortBy === column) {
-      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+      // Cycle through: ASC → DESC → default (null)
+      if (sortOrder === 'asc') {
+        setSortOrder('desc');
+      } else if (sortOrder === 'desc') {
+        setSortBy(null);
+        setSortOrder(null);
+      }
     } else {
+      // First click: set column and ASC
       setSortBy(column);
       setSortOrder('asc');
     }
     setPage(1);
-  }, [sortBy]);
+  }, [sortBy, sortOrder]);
+
+  // Reset page to 1 if current page becomes invalid due to data changes
+  useEffect(() => {
+    if (jobsData?.count) {
+      const totalPages = Math.ceil(jobsData.count / pageSize);
+      if (page > totalPages) {
+        setPage(1);
+      }
+    }
+  }, [jobsData?.count, page, pageSize]);
 
   const getJobTypeColor = (jobType: JobType) => {
     switch (jobType) {
@@ -166,14 +224,26 @@ export function FinanceJobsManager() {
     try {
       const date = new Date(dateString);
       return date.toLocaleDateString("fr-FR", {
-        day: "2-digit",
-        month: "2-digit",
+        day: "numeric",
+        month: "short",
         year: "numeric",
       });
     } catch (error) {
       console.error('Date formatting error:', error, dateString);
       return "-";
     }
+  };
+
+  const isDateFormat = (value: string | null): boolean => {
+    if (!value) return false;
+    // Check if it's a valid date string
+    const date = new Date(value);
+    return !isNaN(date.getTime()) && value.match(/^\d{4}-\d{2}-\d{2}/) !== null;
+  };
+
+  const formatLocationValue = (location: string | null) => {
+    if (!location) return "-";
+    return isDateFormat(location) ? "UK" : location;
   };
 
   if (selectedJobId) {
@@ -187,7 +257,7 @@ export function FinanceJobsManager() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-x-hidden max-w-full">
       {/* Filters - Single Row */}
       <div className="flex flex-wrap items-center gap-4">
         <Input
@@ -251,7 +321,7 @@ export function FinanceJobsManager() {
             <Icon icon="material-symbols:keyboard-arrow-down" className="h-4 w-4" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all_companies">Toutes</SelectItem>
+            <SelectItem value="all_companies">Entreprises</SelectItem>
             {companies?.map((company) => (
               <SelectItem key={company} value={company}>
                 {company}
@@ -274,7 +344,7 @@ export function FinanceJobsManager() {
             <Icon icon="material-symbols:keyboard-arrow-down" className="h-4 w-4" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all_locations">Toutes</SelectItem>
+            <SelectItem value="all_locations">Villes</SelectItem>
             {locations?.map((location) => (
               <SelectItem key={location} value={location}>
                 {location}
@@ -336,134 +406,191 @@ export function FinanceJobsManager() {
         </div>
       ) : (
         <>
-          <div className="rounded-md border">
-            <Table>
+          <div className="rounded-md border overflow-x-auto w-full">
+            <div style={{ minWidth: '1200px' }}>
+              <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-muted h-14">
                   <TableHead 
-                    className="cursor-pointer hover:bg-blue-50 hover:text-blue-700 select-none transition-colors duration-200 group"
+                    className={`cursor-pointer select-none transition-all duration-200 group ${
+                      sortBy === 'company_name' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'hover:bg-blue-50 hover:text-blue-700'
+                    }`}
                     onClick={() => handleSort('company_name')}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between">
                       Entreprise
-                      <div className="flex flex-col opacity-30 group-hover:opacity-70 transition-opacity">
-                        <Icon 
-                          icon="material-symbols:keyboard-arrow-up"
-                          className={`h-3 w-3 ${sortBy === 'company_name' && sortOrder === 'asc' ? 'text-blue-600 opacity-100' : ''}`}
-                        />
-                        <Icon 
-                          icon="material-symbols:keyboard-arrow-down"
-                          className={`h-3 w-3 -mt-1 ${sortBy === 'company_name' && sortOrder === 'desc' ? 'text-blue-600 opacity-100' : ''}`}
-                        />
-                      </div>
+                      <Icon 
+                        icon={
+                          sortBy === 'company_name' && sortOrder === 'asc' 
+                            ? "stash:chart-trend-up-duotone"
+                            : sortBy === 'company_name' && sortOrder === 'desc'
+                            ? "stash:chart-trend-down-duotone"
+                            : "stash:chart-trend-up-duotone"
+                        }
+                        className={`h-4 w-4 transition-all duration-200 ${
+                          sortBy === 'company_name'
+                            ? 'text-blue-600 opacity-100' 
+                            : 'opacity-0 group-hover:opacity-60'
+                        }`}
+                      />
                     </div>
                   </TableHead>
                   <TableHead 
-                    className="cursor-pointer hover:bg-blue-50 hover:text-blue-700 select-none transition-colors duration-200 group"
+                    className={`cursor-pointer select-none transition-all duration-200 group ${
+                      sortBy === 'programme_name' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'hover:bg-blue-50 hover:text-blue-700'
+                    }`}
                     onClick={() => handleSort('programme_name')}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between">
                       Programme
-                      <div className="flex flex-col opacity-30 group-hover:opacity-70 transition-opacity">
-                        <Icon 
-                          icon="material-symbols:keyboard-arrow-up"
-                          className={`h-3 w-3 ${sortBy === 'programme_name' && sortOrder === 'asc' ? 'text-blue-600 opacity-100' : ''}`}
-                        />
-                        <Icon 
-                          icon="material-symbols:keyboard-arrow-down"
-                          className={`h-3 w-3 -mt-1 ${sortBy === 'programme_name' && sortOrder === 'desc' ? 'text-blue-600 opacity-100' : ''}`}
-                        />
-                      </div>
+                      <Icon 
+                        icon={
+                          sortBy === 'programme_name' && sortOrder === 'asc' 
+                            ? "stash:chart-trend-up-duotone"
+                            : sortBy === 'programme_name' && sortOrder === 'desc'
+                            ? "stash:chart-trend-down-duotone"
+                            : "stash:chart-trend-up-duotone"
+                        }
+                        className={`h-4 w-4 transition-all duration-200 ${
+                          sortBy === 'programme_name'
+                            ? 'text-blue-600 opacity-100' 
+                            : 'opacity-0 group-hover:opacity-60'
+                        }`}
+                      />
                     </div>
                   </TableHead>
                   <TableHead 
-                    className="cursor-pointer hover:bg-blue-50 hover:text-blue-700 select-none transition-colors duration-200 group"
+                    className={`cursor-pointer select-none transition-all duration-200 group ${
+                      sortBy === 'job_type' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'hover:bg-blue-50 hover:text-blue-700'
+                    }`}
                     onClick={() => handleSort('job_type')}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between">
                       Type
-                      <div className="flex flex-col opacity-30 group-hover:opacity-70 transition-opacity">
-                        <Icon 
-                          icon="material-symbols:keyboard-arrow-up"
-                          className={`h-3 w-3 ${sortBy === 'job_type' && sortOrder === 'asc' ? 'text-blue-600 opacity-100' : ''}`}
-                        />
-                        <Icon 
-                          icon="material-symbols:keyboard-arrow-down"
-                          className={`h-3 w-3 -mt-1 ${sortBy === 'job_type' && sortOrder === 'desc' ? 'text-blue-600 opacity-100' : ''}`}
-                        />
-                      </div>
+                      <Icon 
+                        icon={
+                          sortBy === 'job_type' && sortOrder === 'asc' 
+                            ? "stash:chart-trend-up-duotone"
+                            : sortBy === 'job_type' && sortOrder === 'desc'
+                            ? "stash:chart-trend-down-duotone"
+                            : "stash:chart-trend-up-duotone"
+                        }
+                        className={`h-4 w-4 transition-all duration-200 ${
+                          sortBy === 'job_type'
+                            ? 'text-blue-600 opacity-100' 
+                            : 'opacity-0 group-hover:opacity-60'
+                        }`}
+                      />
                     </div>
                   </TableHead>
                   <TableHead 
-                    className="cursor-pointer hover:bg-blue-50 hover:text-blue-700 select-none transition-colors duration-200 group"
+                    className={`cursor-pointer select-none transition-all duration-200 group ${
+                      sortBy === 'category' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'hover:bg-blue-50 hover:text-blue-700'
+                    }`}
                     onClick={() => handleSort('category')}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between">
                       Catégorie
-                      <div className="flex flex-col opacity-30 group-hover:opacity-70 transition-opacity">
-                        <Icon 
-                          icon="material-symbols:keyboard-arrow-up"
-                          className={`h-3 w-3 ${sortBy === 'category' && sortOrder === 'asc' ? 'text-blue-600 opacity-100' : ''}`}
-                        />
-                        <Icon 
-                          icon="material-symbols:keyboard-arrow-down"
-                          className={`h-3 w-3 -mt-1 ${sortBy === 'category' && sortOrder === 'desc' ? 'text-blue-600 opacity-100' : ''}`}
-                        />
-                      </div>
+                      <Icon 
+                        icon={
+                          sortBy === 'category' && sortOrder === 'asc' 
+                            ? "stash:chart-trend-up-duotone"
+                            : sortBy === 'category' && sortOrder === 'desc'
+                            ? "stash:chart-trend-down-duotone"
+                            : "stash:chart-trend-up-duotone"
+                        }
+                        className={`h-4 w-4 transition-all duration-200 ${
+                          sortBy === 'category'
+                            ? 'text-blue-600 opacity-100' 
+                            : 'opacity-0 group-hover:opacity-60'
+                        }`}
+                      />
                     </div>
                   </TableHead>
                   <TableHead 
-                    className="cursor-pointer hover:bg-blue-50 hover:text-blue-700 select-none transition-colors duration-200 group"
+                    className={`cursor-pointer select-none transition-all duration-200 group ${
+                      sortBy === 'locations' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'hover:bg-blue-50 hover:text-blue-700'
+                    }`}
                     onClick={() => handleSort('locations')}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between">
                       Localisation
-                      <div className="flex flex-col opacity-30 group-hover:opacity-70 transition-opacity">
-                        <Icon 
-                          icon="material-symbols:keyboard-arrow-up"
-                          className={`h-3 w-3 ${sortBy === 'locations' && sortOrder === 'asc' ? 'text-blue-600 opacity-100' : ''}`}
-                        />
-                        <Icon 
-                          icon="material-symbols:keyboard-arrow-down"
-                          className={`h-3 w-3 -mt-1 ${sortBy === 'locations' && sortOrder === 'desc' ? 'text-blue-600 opacity-100' : ''}`}
-                        />
-                      </div>
+                      <Icon 
+                        icon={
+                          sortBy === 'locations' && sortOrder === 'asc' 
+                            ? "stash:chart-trend-up-duotone"
+                            : sortBy === 'locations' && sortOrder === 'desc'
+                            ? "stash:chart-trend-down-duotone"
+                            : "stash:chart-trend-up-duotone"
+                        }
+                        className={`h-4 w-4 transition-all duration-200 ${
+                          sortBy === 'locations'
+                            ? 'text-blue-600 opacity-100' 
+                            : 'opacity-0 group-hover:opacity-60'
+                        }`}
+                      />
                     </div>
                   </TableHead>
                   <TableHead 
-                    className="cursor-pointer hover:bg-blue-50 hover:text-blue-700 select-none transition-colors duration-200 group"
+                    className={`cursor-pointer select-none transition-all duration-200 group ${
+                      sortBy === 'opening_date' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'hover:bg-blue-50 hover:text-blue-700'
+                    }`}
                     onClick={() => handleSort('opening_date')}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between">
                       Date d'ouverture
-                      <div className="flex flex-col opacity-30 group-hover:opacity-70 transition-opacity">
-                        <Icon 
-                          icon="material-symbols:keyboard-arrow-up"
-                          className={`h-3 w-3 ${sortBy === 'opening_date' && sortOrder === 'asc' ? 'text-blue-600 opacity-100' : ''}`}
-                        />
-                        <Icon 
-                          icon="material-symbols:keyboard-arrow-down"
-                          className={`h-3 w-3 -mt-1 ${sortBy === 'opening_date' && sortOrder === 'desc' ? 'text-blue-600 opacity-100' : ''}`}
-                        />
-                      </div>
+                      <Icon 
+                        icon={
+                          sortBy === 'opening_date' && sortOrder === 'asc' 
+                            ? "stash:chart-trend-up-duotone"
+                            : sortBy === 'opening_date' && sortOrder === 'desc'
+                            ? "stash:chart-trend-down-duotone"
+                            : "stash:chart-trend-up-duotone"
+                        }
+                        className={`h-4 w-4 transition-all duration-200 ${
+                          sortBy === 'opening_date'
+                            ? 'text-blue-600 opacity-100' 
+                            : 'opacity-0 group-hover:opacity-60'
+                        }`}
+                      />
                     </div>
                   </TableHead>
                   <TableHead 
-                    className="cursor-pointer hover:bg-blue-50 hover:text-blue-700 select-none transition-colors duration-200 group"
+                    className={`cursor-pointer select-none transition-all duration-200 group ${
+                      sortBy === 'closing_date' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'hover:bg-blue-50 hover:text-blue-700'
+                    }`}
                     onClick={() => handleSort('closing_date')}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between">
                       Date de clôture
-                      <div className="flex flex-col opacity-30 group-hover:opacity-70 transition-opacity">
-                        <Icon 
-                          icon="material-symbols:keyboard-arrow-up"
-                          className={`h-3 w-3 ${sortBy === 'closing_date' && sortOrder === 'asc' ? 'text-blue-600 opacity-100' : ''}`}
-                        />
-                        <Icon 
-                          icon="material-symbols:keyboard-arrow-down"
-                          className={`h-3 w-3 -mt-1 ${sortBy === 'closing_date' && sortOrder === 'desc' ? 'text-blue-600 opacity-100' : ''}`}
-                        />
-                      </div>
+                      <Icon 
+                        icon={
+                          sortBy === 'closing_date' && sortOrder === 'asc' 
+                            ? "stash:chart-trend-up-duotone"
+                            : sortBy === 'closing_date' && sortOrder === 'desc'
+                            ? "stash:chart-trend-down-duotone"
+                            : "stash:chart-trend-up-duotone"
+                        }
+                        className={`h-4 w-4 transition-all duration-200 ${
+                          sortBy === 'closing_date'
+                            ? 'text-blue-600 opacity-100' 
+                            : 'opacity-0 group-hover:opacity-60'
+                        }`}
+                      />
                     </div>
                   </TableHead>
                   <TableHead>Exigences</TableHead>
@@ -471,11 +598,11 @@ export function FinanceJobsManager() {
               </TableHeader>
               <TableBody>
                 {jobsData?.data.map((job) => (
-                  <TableRow key={job.id}>
-                    <TableCell className="font-medium">
+                  <TableRow key={job.id} className="h-16">
+                    <TableCell className="font-medium py-4">
                       {job.company_name}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-4">
                       {job.programme_links && job.programme_links.length > 0 ? (
                         <a
                           href={job.programme_links[0].url}
@@ -489,18 +616,18 @@ export function FinanceJobsManager() {
                         <span>{job.programme_name || "-"}</span>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-4">
                       <Badge className={getJobTypeColor(job.job_type)}>
                         {JOB_TYPES[job.job_type]}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      {job.category ? JOB_CATEGORIES[job.category] : "-"}
+                    <TableCell className="py-4">
+                      {job.category && job.category !== "Off-Cycle Internships" ? JOB_CATEGORIES[job.category] : "-"}
                     </TableCell>
-                    <TableCell>{job.locations || "-"}</TableCell>
-                    <TableCell>{formatDate(job.opening_date)}</TableCell>
-                    <TableCell>{formatDate(job.closing_date)}</TableCell>
-                    <TableCell>
+                    <TableCell className="py-4">{formatLocationValue(job.locations)}</TableCell>
+                    <TableCell className="py-4">{formatDate(job.opening_date)}</TableCell>
+                    <TableCell className="py-4">{formatDate(job.closing_date)}</TableCell>
+                    <TableCell className="py-4">
                       <div className="flex gap-1">
                         {job.cv_required === "Yes" && (
                           <Badge variant="outline" className="text-xs">
@@ -528,11 +655,12 @@ export function FinanceJobsManager() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           </div>
 
           {/* Pagination */}
           {jobsData && jobsData.count > pageSize && (
-            <div className="flex items-center justify-between mt-6">
+            <div className="flex flex-col items-center gap-4 mt-6">
               <div className="text-sm text-muted-foreground">
                 Affichage de {(page - 1) * pageSize + 1} à{" "}
                 {Math.min(page * pageSize, jobsData.count)} sur {jobsData.count}{" "}
@@ -542,7 +670,7 @@ export function FinanceJobsManager() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPage(page - 1)}
+                  onClick={() => handlePageChange(page - 1)}
                   disabled={page === 1}
                   className="rounded-xl shadow-soft"
                 >
@@ -590,7 +718,7 @@ export function FinanceJobsManager() {
                           key={pageNum}
                           variant={pageNum === page ? "default" : "outline"}
                           size="sm"
-                          onClick={() => setPage(pageNum as number)}
+                          onClick={() => handlePageChange(pageNum as number)}
                           className="w-10 h-10 p-0 rounded-lg shadow-soft"
                         >
                           {pageNum}
@@ -603,7 +731,7 @@ export function FinanceJobsManager() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPage(page + 1)}
+                  onClick={() => handlePageChange(page + 1)}
                   disabled={page >= Math.ceil(jobsData.count / pageSize)}
                   className="rounded-xl shadow-soft"
                 >

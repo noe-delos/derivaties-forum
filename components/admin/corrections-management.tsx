@@ -343,18 +343,20 @@ export function CorrectionsManagement() {
               <div className="bg-muted/50 p-4 rounded-lg">
                 <h4 className="font-medium mb-2">Question originale:</h4>
                 <p className="text-sm font-medium">{selectedCorrection.post?.title}</p>
-                <div className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap">
-                  {selectedCorrection.post?.content}
-                </div>
+                <div 
+                  className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap"
+                  dangerouslySetInnerHTML={{ __html: selectedCorrection.post?.content || '' }}
+                />
               </div>
 
               {/* Correction Content */}
               <div>
                 <h4 className="font-medium mb-2">Correction proposée:</h4>
                 <div className="bg-white border rounded-lg p-4">
-                  <div className="text-sm whitespace-pre-wrap">
-                    {selectedCorrection.content}
-                  </div>
+                  <div 
+                    className="text-sm whitespace-pre-wrap"
+                    dangerouslySetInnerHTML={{ __html: selectedCorrection.content || '' }}
+                  />
                 </div>
               </div>
 

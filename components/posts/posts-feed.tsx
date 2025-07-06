@@ -1,11 +1,12 @@
 /* eslint-disable react/no-unescaped-entities */
 "use client";
 
-import { useEffect, useCallback } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useEffect, useCallback, useState } from "react";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useInView } from "react-intersection-observer";
 import { Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 
 import { PostCard } from "./post-card";
 import { PostSkeleton } from "./post-skeleton";
@@ -15,6 +16,7 @@ import { PostCategory, SearchFilters } from "@/lib/types";
 import { useAuth } from "@/lib/providers/auth-provider";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
 
 interface PostsFeedProps {
   category?: PostCategory;
@@ -31,21 +33,74 @@ export function PostsFeed({
   isNaturalLanguage = false,
   className,
 }: PostsFeedProps) {
-  console.log("📋 PostsFeed rendered with props:", {
-    category,
-    filters,
-    searchQuery,
-    isNaturalLanguage,
-    className,
-  });
-
   const { isAuthenticated, profile } = useAuth();
+  const [purchasedPosts, setPurchasedPosts] = useState<Set<string>>(new Set());
+  const supabase = createClient();
+  const queryClient = useQueryClient();
+
   const { ref, inView } = useInView({
     threshold: 0,
     rootMargin: "100px",
   });
 
-  // Determine if we should use search or regular fetch
+  // Fetch purchased posts for authenticated users
+  useEffect(() => {
+    async function fetchPurchasedPosts() {
+      if (!isAuthenticated || !profile) return;
+
+      try {
+        const { data, error } = await supabase
+          .from("user_purchased_content")
+          .select("post_id")
+          .eq("user_id", profile.id);
+
+        if (error) {
+          console.error("Error fetching purchased posts:", error);
+          return;
+        }
+
+        const purchasedPostIds = new Set(
+          data?.map((item) => item.post_id) || []
+        );
+        setPurchasedPosts(purchasedPostIds);
+      } catch (error) {
+        console.error("Error fetching purchased posts:", error);
+      }
+    }
+
+    fetchPurchasedPosts();
+  }, [isAuthenticated, profile, supabase]);
+
+  // Handle purchase
+  const handlePurchase = useCallback(
+    async (postId: string, contentType: "interview" | "correction") => {
+      // Refresh purchased posts after successful purchase
+      if (isAuthenticated && profile) {
+        // Update purchased posts state immediately
+        setPurchasedPosts((prev) => new Set([...prev, postId]));
+
+        // Refresh purchased posts from database
+        const { data, error } = await supabase
+          .from("user_purchased_content")
+          .select("post_id")
+          .eq("user_id", profile.id);
+
+        if (!error && data) {
+          const purchasedPostIds = new Set(data.map((item) => item.post_id));
+          setPurchasedPosts(purchasedPostIds);
+        }
+
+        queryClient.invalidateQueries({ queryKey: ["user"] });
+        queryClient.invalidateQueries({ queryKey: ["profile"] });
+
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("refresh-auth"));
+        }
+      }
+    },
+    [isAuthenticated, profile, supabase, queryClient]
+  );
+
   const hasSearchQuery = searchQuery.trim().length > 0;
   const hasFilters =
     filters &&
@@ -80,8 +135,6 @@ export function PostsFeed({
       isAuthenticated,
     ],
     queryFn: ({ pageParam = 0 }) => {
-      console.log(`📥 PostsFeed queryFn called with pageParam: ${pageParam}`);
-
       if (shouldUseSearch) {
         console.log("🔍 Using enhancedSearchPosts");
         return enhancedSearchPosts({
@@ -92,7 +145,6 @@ export function PostsFeed({
           isNaturalLanguage,
         });
       } else {
-        console.log("📰 Using regular fetchPosts");
         return fetchPosts({
           pageParam,
           category,
@@ -102,10 +154,6 @@ export function PostsFeed({
       }
     },
     getNextPageParam: (lastPage) => {
-      console.log("📄 getNextPageParam called with lastPage:", {
-        dataLength: lastPage.data.length,
-        nextPage: lastPage.nextPage,
-      });
       return lastPage.nextPage;
     },
     initialPageParam: 0,
@@ -113,13 +161,7 @@ export function PostsFeed({
 
   const fetchNext = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
-      console.log("📄 Fetching next page...");
       fetchNextPage();
-    } else {
-      console.log("📄 Not fetching next page:", {
-        hasNextPage,
-        isFetchingNextPage,
-      });
     }
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
@@ -132,17 +174,7 @@ export function PostsFeed({
 
   const posts = data?.pages.flatMap((page) => page.data) ?? [];
 
-  console.log("📊 PostsFeed current state:", {
-    postsCount: posts.length,
-    pagesLoaded: data?.pages.length || 0,
-    isLoading,
-    hasNextPage,
-    isFetchingNextPage,
-    error: error ? error.message : null,
-  });
-
   if (isLoading) {
-    console.log("⏳ PostsFeed showing loading state");
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-5">
         {Array.from({ length: 10 }).map((_, i) => (
@@ -194,13 +226,12 @@ export function PostsFeed({
     );
   }
 
-  console.log("✅ PostsFeed rendering posts successfully");
+  console.log("✅ PostsFeed rendering posts successfully", posts);
   return (
     <div className={className}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
         {posts.map((post, index) => {
-          // Show blurred content for non-public posts to anonymous users
-          const shouldBlur = !isAuthenticated;
+          const isPurchased = purchasedPosts.has(post.id);
 
           return (
             <motion.div
@@ -215,12 +246,13 @@ export function PostsFeed({
             >
               <PostCard
                 post={post}
-                isBlurred={shouldBlur}
                 showActions={isAuthenticated || post.is_public}
                 className="transform scale-95"
                 isAuthenticated={isAuthenticated}
                 profile={profile}
                 isFeedView={true}
+                isPurchased={isPurchased}
+                onPurchase={handlePurchase}
               />
             </motion.div>
           );

@@ -121,18 +121,31 @@ CREATE TABLE public.corrections (
     updated_at timestamptz DEFAULT now()
 );
 
+-- User purchased content table (for token system)
+CREATE TABLE public.user_purchased_content (
+    id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id uuid REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    post_id uuid REFERENCES public.posts(id) ON DELETE CASCADE NOT NULL,
+    content_type text NOT NULL CHECK (content_type IN ('interview', 'correction')),
+    tokens_spent integer NOT NULL,
+    created_at timestamptz DEFAULT now(),
+    -- Ensure a user can only purchase the same content once
+    UNIQUE(user_id, post_id, content_type)
+);
+
 -- Function to handle user creation from auth.users
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-    INSERT INTO public.users (id, email, first_name, last_name, linkedin_url, phone_number)
+    INSERT INTO public.users (id, email, first_name, last_name, linkedin_url, phone_number, tokens)
     VALUES (
         new.id,
         new.email,
         new.raw_user_meta_data->>'first_name',
         new.raw_user_meta_data->>'last_name',
         new.raw_user_meta_data->>'linkedin_url',
-        new.raw_user_meta_data->>'phone_number'
+        new.raw_user_meta_data->>'phone_number',
+        20  -- Give 20 tokens on signup
     );
     RETURN new;
 END;
@@ -441,6 +454,83 @@ CREATE TRIGGER correction_post_status_trigger
     AFTER UPDATE OR DELETE ON public.corrections
     FOR EACH ROW EXECUTE FUNCTION update_post_corrected_status();
 
+-- Function to purchase content
+CREATE OR REPLACE FUNCTION public.purchase_content(
+    p_post_id uuid,
+    p_content_type text,
+    p_tokens_cost integer
+)
+RETURNS boolean AS $$
+DECLARE
+    user_tokens integer;
+    purchase_exists boolean;
+BEGIN
+    -- Check if user is authenticated
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'User must be authenticated';
+    END IF;
+    
+    -- Check if content type is valid
+    IF p_content_type NOT IN ('interview', 'correction') THEN
+        RAISE EXCEPTION 'Invalid content type';
+    END IF;
+    
+    -- Check if user has enough tokens
+    SELECT tokens INTO user_tokens 
+    FROM public.users 
+    WHERE id = auth.uid();
+    
+    IF user_tokens < p_tokens_cost THEN
+        RAISE EXCEPTION 'Not enough tokens';
+    END IF;
+    
+    -- Check if user already purchased this content
+    SELECT EXISTS(
+        SELECT 1 FROM public.user_purchased_content 
+        WHERE user_id = auth.uid() 
+        AND post_id = p_post_id 
+        AND content_type = p_content_type
+    ) INTO purchase_exists;
+    
+    IF purchase_exists THEN
+        RAISE EXCEPTION 'Content already purchased';
+    END IF;
+    
+    -- Deduct tokens from user
+    UPDATE public.users 
+    SET tokens = tokens - p_tokens_cost 
+    WHERE id = auth.uid();
+    
+    -- Record the purchase
+    INSERT INTO public.user_purchased_content (user_id, post_id, content_type, tokens_spent)
+    VALUES (auth.uid(), p_post_id, p_content_type, p_tokens_cost);
+    
+    RETURN TRUE;
+END;
+$$ language plpgsql security definer;
+
+-- Function to check if user has purchased content
+CREATE OR REPLACE FUNCTION public.has_purchased_content(
+    p_post_id uuid,
+    p_content_type text
+)
+RETURNS boolean AS $$
+BEGIN
+    -- If user is not authenticated, return false
+    IF auth.uid() IS NULL THEN
+        RETURN FALSE;
+    END IF;
+    
+    -- Check if user has purchased this content
+    RETURN EXISTS(
+        SELECT 1 FROM public.user_purchased_content 
+        WHERE user_id = auth.uid() 
+        AND post_id = p_post_id 
+        AND content_type = p_content_type
+    );
+END;
+$$ language plpgsql security definer;
+
 -- RLS Policies
 
 -- Enable RLS on all tables
@@ -451,6 +541,7 @@ ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.corrections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_purchased_content ENABLE ROW LEVEL SECURITY;
 
 -- Users policies
 CREATE POLICY "Users can view all profiles" ON public.users
@@ -642,6 +733,13 @@ CREATE POLICY "Moderators can update correction status" ON public.corrections
         )
     );
 
+-- User purchased content policies
+CREATE POLICY "Users can view own purchased content" ON public.user_purchased_content
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own purchased content" ON public.user_purchased_content
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
 -- Storage policies for file uploads
 INSERT INTO storage.buckets (id, name, public) VALUES ('profile-pictures', 'profile-pictures', true);
 INSERT INTO storage.buckets (id, name, public) VALUES ('post-media', 'post-media', true);
@@ -703,6 +801,9 @@ CREATE INDEX idx_corrections_status ON public.corrections(status);
 CREATE INDEX idx_corrections_selected ON public.corrections(is_selected);
 CREATE INDEX idx_users_linkedin_url ON public.users(linkedin_url);
 CREATE INDEX idx_users_phone_number ON public.users(phone_number);
+CREATE INDEX idx_user_purchased_content_user_id ON public.user_purchased_content(user_id);
+CREATE INDEX idx_user_purchased_content_post_id ON public.user_purchased_content(post_id);
+CREATE INDEX idx_user_purchased_content_type ON public.user_purchased_content(content_type);
 
 -- Add these statements at the end of the file to properly configure service role bypass
 ALTER TABLE public.users ALTER COLUMN email DROP NOT NULL;
@@ -720,6 +821,7 @@ ALTER TABLE public.comments FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.votes FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.corrections FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.user_purchased_content FORCE ROW LEVEL SECURITY;
 
 -- Add security definer to functions that need to bypass RLS
 ALTER FUNCTION public.handle_new_user() SECURITY DEFINER;
@@ -729,4 +831,6 @@ ALTER FUNCTION public.update_post_comments_count() SECURITY DEFINER;
 ALTER FUNCTION public.award_tokens_for_approved_post() SECURITY DEFINER;
 ALTER FUNCTION public.award_tokens_for_approved_correction() SECURITY DEFINER;
 ALTER FUNCTION public.notify_correction_submission() SECURITY DEFINER;
-ALTER FUNCTION public.update_post_corrected_status() SECURITY DEFINER; 
+ALTER FUNCTION public.update_post_corrected_status() SECURITY DEFINER;
+ALTER FUNCTION public.purchase_content(uuid, text, integer) SECURITY DEFINER;
+ALTER FUNCTION public.has_purchased_content(uuid, text) SECURITY DEFINER; 

@@ -5,6 +5,7 @@ import { Correction } from "@/lib/types";
 
 export interface CreateCorrectionData {
   post_id: string;
+  user_id: string;
   content: string;
 }
 
@@ -38,6 +39,8 @@ export async function createCorrection(data: CreateCorrectionData, isAuthenticat
 export async function getCorrectionsByPostId(postId: string, isAuthenticated: boolean = false) {
   const supabase = getAdminSupabaseClient();
   
+  console.log("🔍 Getting all corrections for post:", postId);
+  
   const { data: corrections, error } = await supabase
     .from("corrections")
     .select(`
@@ -49,6 +52,8 @@ export async function getCorrectionsByPostId(postId: string, isAuthenticated: bo
     .eq("status", "approved")
     .order("created_at", { ascending: true });
 
+  console.log("📝 All corrections for post:", corrections?.length || 0, corrections);
+
   if (error) {
     throw new Error(error.message);
   }
@@ -58,6 +63,8 @@ export async function getCorrectionsByPostId(postId: string, isAuthenticated: bo
 
 export async function getSelectedCorrectionForPost(postId: string, isAuthenticated: boolean = false) {
   const supabase = getAdminSupabaseClient();
+  
+  console.log("🔍 Looking for selected correction for post:", postId);
   
   const { data: correction, error } = await supabase
     .from("corrections")
@@ -70,6 +77,8 @@ export async function getSelectedCorrectionForPost(postId: string, isAuthenticat
     .eq("status", "approved")
     .eq("is_selected", true)
     .single();
+
+  console.log("📝 Selected correction query result:", { correction, error: error?.message });
 
   if (error && error.code !== 'PGRST116') {
     throw new Error(error.message);
@@ -211,4 +220,29 @@ export async function getCorrectionStats() {
   }
 
   return stats;
+}
+
+// Debug function to check all corrections for a post
+export async function debugCorrectionsForPost(postId: string) {
+  const supabase = getAdminSupabaseClient();
+  
+  console.log("🐛 DEBUG: Checking all corrections for post:", postId);
+  
+  const { data: allCorrections, error } = await supabase
+    .from("corrections")
+    .select("*")
+    .eq("post_id", postId);
+    
+  console.log("🐛 DEBUG: All corrections (any status):", allCorrections);
+  
+  // Also check if post exists and its corrected status
+  const { data: post, error: postError } = await supabase
+    .from("posts")
+    .select("id, title, corrected")
+    .eq("id", postId)
+    .single();
+    
+  console.log("🐛 DEBUG: Post info:", post);
+  
+  return { allCorrections, post };
 }

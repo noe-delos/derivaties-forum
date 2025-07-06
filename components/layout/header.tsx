@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { User, LogOut, Settings, PlusCircle } from "lucide-react";
 import { toast } from "sonner";
+import { Icon } from "@iconify/react";
 
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -38,12 +39,12 @@ export function Header({ isAuthenticated, profile }: HeaderProps) {
   const getAppTitle = () => {
     if (isTrackerApp) {
       return {
-        title: "Tracker de stages.",
+        title: "Tracker de stages",
         subtitle: "Suivez vos candidatures et gérez vos stages en finance.",
       };
     } else if (isForumApp) {
       return {
-        title: "Forum entretiens.",
+        title: "Forum entretiens",
         subtitle: "Le forum BridgeYou des entretiens en finance.",
       };
     } else {
@@ -102,21 +103,32 @@ export function Header({ isAuthenticated, profile }: HeaderProps) {
             </h3>
           </div>
 
+          {/* Left side actions for forum */}
+          {isForumApp && isAuthenticated && (
+            <div className="flex items-center gap-2">
+              <Button variant="link" size="sm" asChild>
+                <Link href="/forum/mes-entretiens">Mes entretiens</Link>
+              </Button>
+            </div>
+          )}
+
           {/* Right side actions */}
           <div className="flex items-center gap-2 ml-auto">
             {/* Show "Publier" button only for forum app */}
             {isForumApp && (
-              <Button variant="ghost" size="sm" asChild>
+              <Button
+                variant="outline"
+                className="shadow-none border border-border"
+                size="sm"
+                asChild
+              >
                 <Link href="/forum/create">
-                  <PlusCircle className="h-4 w-4 mr-2" />
+                  <Icon icon="flowbite:plus-outline" className="h-4 w-4 mr-0" />
                   Publier
                 </Link>
               </Button>
             )}
 
-            {isAuthenticated && profile && (
-              <NotificationsPopover userId={profile.id} />
-            )}
 
             {/* User menu or auth buttons */}
             {isAuthenticated && profile ? (
@@ -139,9 +151,9 @@ export function Header({ isAuthenticated, profile }: HeaderProps) {
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
+                <DropdownMenuContent className="w-64 rounded-2xl shadow-sm border border-border/50 p-3" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal p-3">
+                    <div className="flex flex-col space-y-2">
                       <p className="text-sm font-medium leading-none">
                         {profile.first_name && profile.last_name
                           ? `${profile.first_name} ${profile.last_name}`
@@ -150,12 +162,8 @@ export function Header({ isAuthenticated, profile }: HeaderProps) {
                       <p className="text-xs leading-none text-muted-foreground">
                         {profile.email}
                       </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="secondary" className="gap-1 text-xs">
-                          <span className="text-yellow-600">⭐</span>
-                          {profile.tokens}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge variant="outline" className="text-xs rounded-full">
                           {profile.role}
                         </Badge>
                       </div>
@@ -163,13 +171,13 @@ export function Header({ isAuthenticated, profile }: HeaderProps) {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
 
-                  <DropdownMenuItem asChild>
-                    <Link href="/forum/profile">
+                  <DropdownMenuItem asChild className="rounded-xl p-3 my-1">
+                    <Link href={`/forum/profile/${profile.id}`}>
                       <User className="mr-2 h-4 w-4" />
                       <span>Profil</span>
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
+                  <DropdownMenuItem asChild className="rounded-xl p-3 my-1">
                     <Link href="/forum/settings">
                       <Settings className="mr-2 h-4 w-4" />
                       <span>Paramètres</span>
@@ -177,7 +185,7 @@ export function Header({ isAuthenticated, profile }: HeaderProps) {
                   </DropdownMenuItem>
                   {(profile?.role === "moderator" ||
                     profile?.role === "admin") && (
-                    <DropdownMenuItem asChild>
+                    <DropdownMenuItem asChild className="rounded-xl p-3 my-1">
                       <Link href="/forum/admin">
                         <Settings className="mr-2 h-4 w-4" />
                         <span>Administration</span>
@@ -187,7 +195,7 @@ export function Header({ isAuthenticated, profile }: HeaderProps) {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={handleSignOut}
-                    className="cursor-pointer"
+                    className="cursor-pointer rounded-xl p-3 my-1"
                   >
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Déconnexion</span>

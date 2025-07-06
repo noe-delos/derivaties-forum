@@ -31,7 +31,7 @@ export default async function TrackerPage() {
   try {
     await Promise.all([
       queryClient.prefetchQuery({
-        queryKey: ["finance-jobs", {}, 1, 'created_at', 'desc'],
+        queryKey: ["finance-jobs", {}, 1, 'default', 'default'],
         queryFn: () => fetchFinanceJobs(supabase, {}, 1, 20),
       }),
       queryClient.prefetchQuery({

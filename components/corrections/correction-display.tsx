@@ -3,29 +3,52 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { CheckCircle, Calendar, User as UserIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CheckCircle } from "lucide-react";
 import { getSelectedCorrectionForPost } from "@/lib/services/corrections";
 import { Correction, Post } from "@/lib/types";
-import { formatDistanceToNow } from "date-fns";
-import { fr } from "date-fns/locale";
+import { Icon } from "@iconify/react";
+import { cn } from "@/lib/utils";
 
 interface CorrectionDisplayProps {
   post: Post;
   isAuthenticated: boolean;
+  isPurchased?: boolean;
+  onPurchase?: (postId: string, contentType: "correction") => void;
 }
 
-export function CorrectionDisplay({ post, isAuthenticated }: CorrectionDisplayProps) {
+export function CorrectionDisplay({
+  post,
+  isAuthenticated,
+  isPurchased = false,
+  onPurchase,
+}: CorrectionDisplayProps) {
   const [correction, setCorrection] = useState<Correction | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Check if we already have the correction data from the post
+    if (post.selected_correction && post.selected_correction.length > 0) {
+      const selectedCorrection = post.selected_correction.find(
+        (c) => c.status === "approved"
+      );
+      if (selectedCorrection) {
+        setCorrection(selectedCorrection);
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    // Fallback to fetching if not available in post data
     loadCorrection();
-  }, [post.id, isAuthenticated]);
+  }, [post.id, post.selected_correction, isAuthenticated]);
 
   const loadCorrection = async () => {
     try {
-      const selectedCorrection = await getSelectedCorrectionForPost(post.id, isAuthenticated);
+      const selectedCorrection = await getSelectedCorrectionForPost(
+        post.id,
+        isAuthenticated
+      );
       setCorrection(selectedCorrection);
     } catch (error) {
       console.error("Error loading correction:", error);
@@ -55,34 +78,20 @@ export function CorrectionDisplay({ post, isAuthenticated }: CorrectionDisplayPr
     return null;
   }
 
-  const getUserInitials = () => {
-    if (correction.user?.first_name && correction.user?.last_name) {
-      return `${correction.user.first_name[0]}${correction.user.last_name[0]}`.toUpperCase();
-    }
-    if (correction.user?.username) {
-      return correction.user.username.slice(0, 2).toUpperCase();
-    }
-    return "U";
-  };
-
-  const getUserDisplayName = () => {
-    if (correction.user?.first_name && correction.user?.last_name) {
-      return `${correction.user.first_name} ${correction.user.last_name}`;
-    }
-    return correction.user?.username || "Utilisateur";
-  };
-
   return (
-    <Card className="border-green-200 bg-green-50/50">
+    <Card className="border-gray-200 bg-gray-50/50">
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-green-600" />
-            <h3 className="text-lg font-semibold text-green-900">
+            <h3 className="text-lg font-semibold text-gray-900">
               Correction validée
             </h3>
+            <Icon
+              icon="material-symbols:verified-rounded"
+              className="h-5 w-5 text-blue-500"
+            />
           </div>
-          <Badge variant="secondary" className="bg-green-100 text-green-700">
+          <Badge variant="secondary" className="bg-blue-100 text-blue-700">
             Solution officielle
           </Badge>
         </div>
@@ -90,58 +99,44 @@ export function CorrectionDisplay({ post, isAuthenticated }: CorrectionDisplayPr
       <CardContent>
         <div className="space-y-4">
           {/* Correction content */}
-          <div className="prose prose-sm max-w-none">
-            <div className="whitespace-pre-wrap text-foreground">
-              {correction.content}
-            </div>
+          <div
+            className={cn(
+              "prose prose-sm max-w-none relative",
+              !isPurchased && "min-h-[200px]"
+            )}
+          >
+            <div
+              className={cn(
+                "whitespace-pre-wrap text-foreground",
+                !isPurchased &&
+                  "blur select-none opacity-80 pointer-events-none"
+              )}
+              dangerouslySetInnerHTML={{ __html: correction.content }}
+            />
+
+            {/* Purchase overlay for correction */}
+            {!isPurchased && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Button
+                  variant="outline"
+                  onClick={() => onPurchase?.(post.id, "correction")}
+                  className="shadow-soft border-blue-200 border rounded-md text-blue-600 gap-2"
+                >
+                  <Icon icon="ic:baseline-lock" className="h-4 w-4" />
+                  Débloquer
+                </Button>
+              </div>
+            )}
           </div>
 
-          {/* Author info */}
-          <div className="flex items-center justify-between pt-4 border-t border-green-200">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-8 w-8">
-                <AvatarImage 
-                  src={correction.user?.profile_picture_url} 
-                  alt={getUserDisplayName()} 
-                />
-                <AvatarFallback className="bg-green-100 text-green-700">
-                  {getUserInitials()}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-green-900">
-                    {getUserDisplayName()}
-                  </span>
-                  {correction.user?.role === 'moderator' && (
-                    <Badge variant="outline" className="text-xs border-orange-300 text-orange-700">
-                      Modérateur
-                    </Badge>
-                  )}
-                  {correction.user?.role === 'admin' && (
-                    <Badge variant="outline" className="text-xs border-red-300 text-red-700">
-                      Admin
-                    </Badge>
-                  )}
-                </div>
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    {formatDistanceToNow(new Date(correction.created_at), {
-                      addSuffix: true,
-                      locale: fr,
-                    })}
-                  </div>
-                  {correction.tokens_awarded > 0 && (
-                    <div className="flex items-center gap-1">
-                      <span className="text-amber-600">
-                        +{correction.tokens_awarded} tokens gagnés
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+          {/* Validé par Derivatives badge */}
+          <div className="flex justify-end items-center gap-2 text-xs text-muted-foreground pt-4  border-gray-200">
+            <span>Validé par Derivatives</span>
+            <img
+              src="/derivaties.png"
+              alt="Derivatives Logo"
+              className="h-5 w-5 object-contain"
+            />
           </div>
         </div>
       </CardContent>

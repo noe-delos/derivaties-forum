@@ -6,7 +6,7 @@ import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Icon } from "@iconify/react";
-import { Eye, CheckCircle } from "lucide-react";
+import { CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +28,7 @@ import { Post } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { getCategoryLabel, getCityLabel } from "@/lib/utils";
 import { ReportDialog } from "./report-dialog";
+import { PurchaseDialog } from "./purchase-dialog";
 
 interface PostCardProps {
   post: Post;
@@ -35,9 +36,14 @@ interface PostCardProps {
   showActions?: boolean;
   expanded?: boolean;
   className?: string;
-  isAuthenticated?: boolean; // Kept for future functionality
-  profile?: any; // Kept for future functionality
+  isAuthenticated?: boolean;
+  profile?: any;
   isFeedView?: boolean;
+  isPurchased?: boolean;
+  onPurchase?: (
+    postId: string,
+    contentType: "interview" | "correction"
+  ) => void;
 }
 
 const categoryColors: Record<string, string> = {
@@ -55,15 +61,20 @@ export function PostCard({
   showActions = true,
   expanded = false,
   className,
-  isAuthenticated = false, // Kept for future functionality
-  profile = null, // Kept for future functionality
+  isAuthenticated = false,
+  profile = null,
   isFeedView = false,
+  isPurchased = false,
+  onPurchase,
 }: PostCardProps) {
   const [shareOpen, setShareOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [purchaseOpen, setPurchaseOpen] = useState(false);
+  const [purchaseType, setPurchaseType] = useState<"interview" | "correction">(
+    "interview"
+  );
   const router = useRouter();
 
-  console.log(isAuthenticated, profile);
   const getUserInitials = (user: any) => {
     if (user?.first_name && user?.last_name) {
       return `${user.first_name[0]}${user.last_name[0]}`.toUpperCase();
@@ -113,6 +124,21 @@ export function PostCard({
     : post.content.length > 200
     ? post.content.substring(0, 200) + "..."
     : post.content;
+
+  // Determine if content should be blurred based on authentication and purchase status
+  const shouldBlurContent = isAuthenticated ? !isPurchased : true;
+  const finalIsBlurred = isBlurred || shouldBlurContent;
+
+  const handlePurchaseClick = (contentType: "interview" | "correction") => {
+    setPurchaseType(contentType);
+    setPurchaseOpen(true);
+  };
+
+  const handlePurchaseSuccess = () => {
+    if (onPurchase) {
+      onPurchase(post.id, purchaseType);
+    }
+  };
 
   return (
     <div
@@ -173,25 +199,10 @@ export function PostCard({
           {/* Category on top right */}
           <div className="flex items-center gap-2">
             {/* Correction checkmark */}
-            {post.corrected && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <div className="flex items-center justify-center w-8 h-8 bg-green-100 rounded-full">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Question corrigée</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
             <Badge
               className={cn(
                 "text-xs px-3 py-2 rounded-lg font-medium",
                 categoryColors[post.category] || categoryColors.general,
-                isBlurred && "blur select-none pointer-events-none opacity-60",
                 isFeedView && "text-[0.65rem] py-1"
               )}
             >
@@ -201,7 +212,6 @@ export function PostCard({
               variant="outline"
               className={cn(
                 "flex items-center py-2 px-3 gap-1 text-sm font-semibold rounded-lg",
-                isBlurred && "blur select-none pointer-events-none opacity-80",
                 isFeedView && "text-[0.65rem] py-1"
               )}
             >
@@ -221,27 +231,30 @@ export function PostCard({
           className={cn(
             "space-y-2",
             isFeedView && "flex-1 flex flex-col",
-            isBlurred && "relative"
+            finalIsBlurred && "relative"
           )}
         >
           {expanded ? (
-            <h1
-              className={cn(
-                "font-medium text-2xl",
-                isBlurred && "blur select-none pointer-events-none"
-              )}
-            >
+            <h1 className="font-medium text-2xl flex items-center gap-2">
               {post.title}
             </h1>
           ) : (
             <h3
               className={cn(
-                "font-medium hover:text-primary transition-colors cursor-pointer",
-                isFeedView ? "text-lg" : "text-[1.4rem]", // Smaller title in feed view
-                isBlurred && "blur select-none pointer-events-none opacity-80"
+                "font-medium hover:text-primary transition-colors cursor-pointer flex items-center gap-2",
+                isFeedView ? "text-lg" : "text-[1.4rem]" // Smaller title in feed view
               )}
             >
               {post.title}
+              {post.corrected && (
+                <Icon
+                  icon="material-symbols:verified-rounded"
+                  className={cn(
+                    "text-blue-500 flex-shrink-0",
+                    isFeedView ? "h-4 w-4" : "h-5 w-5"
+                  )}
+                />
+              )}
             </h3>
           )}
 
@@ -262,10 +275,7 @@ export function PostCard({
                       <img
                         src={images[0].file_url}
                         alt="Post media"
-                        className={cn(
-                          "object-cover size-[50%] rounded-lg",
-                          isBlurred && "blur opacity-80"
-                        )}
+                        className="object-cover size-[50%] rounded-lg"
                       />
                     </div>
                   );
@@ -282,10 +292,7 @@ export function PostCard({
                           <img
                             src={image.file_url}
                             alt={`Post media ${index + 1}`}
-                            className={cn(
-                              "object-cover w-full h-full",
-                              isBlurred && "blur opacity-80"
-                            )}
+                            className="object-cover w-full h-full"
                           />
                         </div>
                       ))}
@@ -302,7 +309,7 @@ export function PostCard({
                           alt="Post media 1"
                           className={cn(
                             "object-cover w-full h-full",
-                            isBlurred && "blur opacity-80"
+                            finalIsBlurred && "blur opacity-80"
                           )}
                         />
                       </div>
@@ -317,7 +324,7 @@ export function PostCard({
                               alt={`Post media ${index + 2}`}
                               className={cn(
                                 "object-cover w-full h-full",
-                                isBlurred && "blur opacity-80"
+                                finalIsBlurred && "blur opacity-80"
                               )}
                             />
                           </div>
@@ -334,10 +341,7 @@ export function PostCard({
                       <img
                         src={images[0].file_url}
                         alt="Post media 1"
-                        className={cn(
-                          "object-cover w-full h-full",
-                          isBlurred && "blur opacity-80"
-                        )}
+                        className="object-cover w-full h-full"
                       />
                     </div>
                     <div className="grid grid-rows-2 gap-2">
@@ -349,10 +353,7 @@ export function PostCard({
                           <img
                             src={image.file_url}
                             alt={`Post media ${index + 2}`}
-                            className={cn(
-                              "object-cover w-full h-full",
-                              isBlurred && "blur opacity-80"
-                            )}
+                            className="object-cover w-full h-full"
                           />
                         </div>
                       ))}
@@ -361,10 +362,7 @@ export function PostCard({
                           <img
                             src={images[3].file_url}
                             alt="Post media 4"
-                            className={cn(
-                              "object-cover w-full h-full opacity-60",
-                              isBlurred && "blur opacity-40"
-                            )}
+                            className="object-cover w-full h-full opacity-60"
                           />
                           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                             <span className="text-white text-lg font-semibold">
@@ -393,10 +391,7 @@ export function PostCard({
                         href={file.file_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={cn(
-                          "flex flex-col items-center gap-2 group",
-                          isBlurred && "blur opacity-80 pointer-events-none"
-                        )}
+                        className="flex flex-col items-center gap-2 group"
                       >
                         <div className="relative size-[4rem] bg-white rounded-lg shadow-sm border border-gray-200 flex items-center justify-center group-hover:shadow-md transition-shadow">
                           {file.file_name?.toLowerCase().endsWith(".pdf") && (
@@ -428,26 +423,51 @@ export function PostCard({
                 isFeedView
                   ? "text-muted-foreground/60 text-xs flex-1 overflow-hidden" // Smaller text in feed view
                   : "text-foreground/90 text-sm",
-                isBlurred &&
+                finalIsBlurred &&
                   "blur select-none opacity-80 pointer-events-none text-foreground/80 [text-shadow:none]"
               )}
               dangerouslySetInnerHTML={{ __html: displayContent }}
             />
             {/* Fadeout gradient - only in feed view and when not blurred */}
-            {isFeedView && !isBlurred && (
+            {isFeedView && !finalIsBlurred && (
               <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-background to-transparent pointer-events-none" />
             )}
           </div>
 
-          {/* Blur overlay for anonymous users */}
-          {isBlurred && (
-            <div className="absolute mb-8 inset-0 flex items-end justify-center pb-4">
-              <Button className="shadow-lg rounded-xl w-fit bg-gradient-to-r from-zinc-500 to-zinc-900 text-white border-0">
-                <Link href="/auth/signup" className="flex items-center gap-1">
-                  <Icon icon="iconamoon:eye-fill" className="mr-2 h-4 w-4" />
-                  Voir
-                </Link>
-              </Button>
+          {/* Blur overlay for users without access */}
+          {finalIsBlurred && (
+            <div
+              className={cn(
+                "absolute mb-4 inset-0 flex items-end justify-center pb-4",
+                !isFeedView && "mb-20"
+              )}
+            >
+              {!isAuthenticated ? (
+                <Button className="shadow-lg rounded-xl w-fit bg-gradient-to-r from-zinc-500 to-zinc-900 text-white border-0">
+                  <Link href="/auth/signup" className="flex items-center gap-1">
+                    <Icon icon="iconamoon:eye-fill" className="mr-2 h-4 w-4" />
+                    Voir
+                  </Link>
+                </Button>
+              ) : !isFeedView ? (
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => handlePurchaseClick("interview")}
+                    className="shadow-soft border-blue-200 border rounded-md text-blue-600 gap-2"
+                  >
+                    <Icon icon="ic:baseline-lock" className="h-4 w-4" />
+                    Débloquer
+                  </Button>
+                </div>
+              ) : (
+                <div className="border shadow-soft border-border rounded-lg p-2 bg-white/90 backdrop-blur-sm">
+                  <Icon
+                    icon="ic:baseline-lock"
+                    className="size-4 text-zinc-700"
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -491,7 +511,6 @@ export function PostCard({
                   <Button
                     variant="ghost"
                     size="sm"
-                    disabled={isBlurred}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -521,7 +540,6 @@ export function PostCard({
               <Button
                 variant="ghost"
                 size="sm"
-                disabled={isBlurred}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -536,12 +554,7 @@ export function PostCard({
             </div>
 
             {/* User info on the right */}
-            <div
-              className={cn(
-                "flex items-center gap-2",
-                isBlurred && "blur select-none pointer-events-none"
-              )}
-            >
+            <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">par</span>
               <Link
                 href={`/forum/profile/${post.user?.id}`}
@@ -572,6 +585,19 @@ export function PostCard({
         postId={post.id}
         postTitle={post.title}
       />
+
+      {/* Purchase Dialog */}
+      {isAuthenticated && profile && (
+        <PurchaseDialog
+          open={purchaseOpen}
+          onOpenChange={setPurchaseOpen}
+          postId={post.id}
+          contentType={purchaseType}
+          postTitle={post.title}
+          userTokens={profile.tokens || 0}
+          onPurchaseSuccess={handlePurchaseSuccess}
+        />
+      )}
     </div>
   );
 }
