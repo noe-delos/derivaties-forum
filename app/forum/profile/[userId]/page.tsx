@@ -74,7 +74,6 @@ export async function generateMetadata({ params }: ProfilePageProps) {
       title: `${displayName} - Forum Finance`,
       description: user.bio || `Profil de ${displayName} sur le forum finance.`,
     };
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return {
       title: "Profil - Forum Finance",

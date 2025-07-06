@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import {
   HydrationBoundary,
   QueryClient,
@@ -9,6 +10,7 @@ import { PostsFeed } from "@/components/posts/posts-feed";
 import { fetchPosts } from "@/lib/services/posts";
 import { createClient } from "@/lib/supabase/server";
 import { POST_CATEGORIES, PostCategory } from "@/lib/types";
+import { PostSkeleton } from "@/components/posts/post-skeleton";
 
 interface CategoryPageProps {
   params: Promise<{
@@ -58,7 +60,17 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
           </p>
         </div>
 
-        <PostsFeed category={category} />
+        <Suspense
+          fallback={
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-5">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <PostSkeleton key={i} />
+              ))}
+            </div>
+          }
+        >
+          <PostsFeed category={category} />
+        </Suspense>
       </div>
     </HydrationBoundary>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -42,7 +43,9 @@ export function MainLayoutClient({
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
-        <AppSidebar isAuthenticated={isAuthenticated} profile={profile} />
+        <Suspense fallback={null}>
+          <AppSidebar isAuthenticated={isAuthenticated} profile={profile} />
+        </Suspense>
         <div className="flex-1 flex flex-col">
           {/* Conditionally render Header - hide on profile pages */}
           {!isProfilePage && (

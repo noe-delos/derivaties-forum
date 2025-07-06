@@ -1,4 +1,3 @@
-/* eslint-disable react/no-unescaped-entities */
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Flag, AlertTriangle } from "lucide-react";
 

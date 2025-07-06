@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Loader2, Send } from "lucide-react";
+import { CheckCircle, Loader2 } from "lucide-react";
+import { Icon } from "@iconify/react";
 import { toast } from "sonner";
 import { createCorrection } from "@/lib/services/corrections";
 import { Post, User } from "@/lib/types";
@@ -107,17 +108,21 @@ export function CorrectionForm({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Send className="h-5 w-5" />
-          Soumettre une correction
-        </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Aidez la communauté en fournissant une réponse détaillée à cette question.
-          Les corrections approuvées vous rapportent des tokens !
-        </p>
-        <Badge variant="secondary" className="w-fit">
-          Gagnez jusqu'à 15 tokens
-        </Badge>
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Icon icon="formkit:submit" className="h-5 w-5" />
+              Soumettre une correction
+            </CardTitle>
+            <p className="text-xs text-muted-foreground/70 mt-1">
+              Aidez la communauté en fournissant une réponse détaillée à cette question.
+              Les corrections approuvées vous rapportent des tokens !
+            </p>
+          </div>
+          <Badge className="bg-gradient-to-r from-yellow-400 to-amber-500 text-white border-0 shadow-sm">
+            Gagnez jusqu'à 15 tokens
+          </Badge>
+        </div>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -127,7 +132,7 @@ export function CorrectionForm({
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={8}
-              className="min-h-[200px]"
+              className="min-h-[200px] rounded-xl resize-none"
               disabled={isSubmitting}
             />
             <div className="flex justify-between items-center mt-2">
@@ -142,11 +147,11 @@ export function CorrectionForm({
             </div>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="text-sm font-medium text-blue-900 mb-2">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <h4 className="text-xs font-medium text-blue-900 mb-1">
               Conseils pour une bonne correction :
             </h4>
-            <ul className="text-sm text-blue-700 space-y-1">
+            <ul className="text-xs text-blue-700 space-y-0.5">
               <li>• Répondez à toutes les parties de la question</li>
               <li>• Utilisez des exemples concrets quand c'est possible</li>
               <li>• Structurez votre réponse de manière claire</li>
@@ -154,11 +159,11 @@ export function CorrectionForm({
             </ul>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex justify-end">
             <Button
               type="submit"
               disabled={isSubmitting || !content.trim()}
-              className="flex-1"
+              className="py-5"
             >
               {isSubmitting ? (
                 <>
@@ -167,7 +172,7 @@ export function CorrectionForm({
                 </>
               ) : (
                 <>
-                  <Send className="h-4 w-4 mr-2" />
+                  <Icon icon="formkit:submit" className="h-4 w-4 mr-2" />
                   Soumettre la correction
                 </>
               )}

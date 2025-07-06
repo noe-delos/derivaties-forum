@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState } from "react";
@@ -275,7 +274,10 @@ export function PostCard({
                       <img
                         src={images[0].file_url}
                         alt="Post media"
-                        className="object-cover size-[50%] rounded-lg"
+                        className={cn(
+                          "object-cover size-[50%] rounded-lg",
+                          finalIsBlurred && "blur opacity-80"
+                        )}
                       />
                     </div>
                   );
@@ -292,7 +294,10 @@ export function PostCard({
                           <img
                             src={image.file_url}
                             alt={`Post media ${index + 1}`}
-                            className="object-cover w-full h-full"
+                            className={cn(
+                              "object-cover w-full h-full",
+                              finalIsBlurred && "blur opacity-80"
+                            )}
                           />
                         </div>
                       ))}
@@ -341,7 +346,10 @@ export function PostCard({
                       <img
                         src={images[0].file_url}
                         alt="Post media 1"
-                        className="object-cover w-full h-full"
+                        className={cn(
+                          "object-cover w-full h-full",
+                          finalIsBlurred && "blur opacity-80"
+                        )}
                       />
                     </div>
                     <div className="grid grid-rows-2 gap-2">
@@ -353,7 +361,10 @@ export function PostCard({
                           <img
                             src={image.file_url}
                             alt={`Post media ${index + 2}`}
-                            className="object-cover w-full h-full"
+                            className={cn(
+                              "object-cover w-full h-full",
+                              finalIsBlurred && "blur opacity-80"
+                            )}
                           />
                         </div>
                       ))}
@@ -362,7 +373,10 @@ export function PostCard({
                           <img
                             src={images[3].file_url}
                             alt="Post media 4"
-                            className="object-cover w-full h-full opacity-60"
+                            className={cn(
+                              "object-cover w-full h-full opacity-60",
+                              finalIsBlurred && "blur"
+                            )}
                           />
                           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                             <span className="text-white text-lg font-semibold">
@@ -391,9 +405,15 @@ export function PostCard({
                         href={file.file_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex flex-col items-center gap-2 group"
+                        className={cn(
+                          "flex flex-col items-center gap-2 group",
+                          finalIsBlurred && "pointer-events-none"
+                        )}
                       >
-                        <div className="relative size-[4rem] bg-white rounded-lg shadow-sm border border-gray-200 flex items-center justify-center group-hover:shadow-md transition-shadow">
+                        <div className={cn(
+                          "relative size-[4rem] bg-white rounded-lg shadow-sm border border-gray-200 flex items-center justify-center group-hover:shadow-md transition-shadow",
+                          finalIsBlurred && "blur-sm opacity-70"
+                        )}>
                           {file.file_name?.toLowerCase().endsWith(".pdf") && (
                             <div className="absolute -bottom-1 -right-2">
                               <img

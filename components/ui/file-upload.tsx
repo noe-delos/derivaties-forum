@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/exhaustive-deps, jsx-a11y/alt-text */
 "use client";
 
 import React, { useCallback, useState, useEffect } from "react";
@@ -83,6 +82,7 @@ export function FileUpload({
 
   const getFileIcon = (file: File) => {
     if (file.type.startsWith("image/")) {
+      // eslint-disable-next-line jsx-a11y/alt-text
       return <Image className="h-4 w-4" />;
     }
     if (file.type.startsWith("video/")) {
@@ -149,6 +149,7 @@ export function FileUpload({
                   <img
                     src={file.preview}
                     className="w-full h-full object-cover"
+                    alt={`Aperçu de ${file.name}`}
                   />
                 </div>
                 <Button
