@@ -11,7 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PostCard } from "@/components/posts/post-card";
 import { PostSkeleton } from "../posts/post-skeleton";
 import { fetchUserPosts } from "@/lib/services/profile";
-import { useAuth } from "@/hooks/use-auth";
+import { useServerAuth } from "@/components/layout/root-layout-client";
+import { createClient } from "@/lib/supabase/client";
 import { Post } from "@/lib/types";
 
 interface ProfilePostsProps {
@@ -27,7 +28,7 @@ export function ProfilePosts({
 }: ProfilePostsProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [profile, setProfile] = useState(null);
-  const { supabase } = useAuth();
+  const supabase = createClient();
   const { ref, inView } = useInView({
     threshold: 0,
     rootMargin: "100px",

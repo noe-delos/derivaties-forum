@@ -50,7 +50,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchAllUsers, updateUserRole } from "@/lib/services/admin";
 import { useSupabase } from "@/hooks/use-supabase";
-import { useAuth } from "@/hooks/use-auth";
+import { useServerAuth } from "@/components/layout/root-layout-client";
 import { UserRole, USER_ROLES, User as UserType } from "@/lib/types";
 import { getUserDisplayName, getUserInitials } from "@/lib/utils";
 
@@ -144,54 +144,9 @@ function PromoteDemoteDialog({
 export function ModeratorsManagement() {
   const supabase = useSupabase();
   const queryClient = useQueryClient();
-  const { supabase: authSupabase } = useAuth();
-  const [currentUser, setCurrentUser] = useState<UserType | null>(null);
+  const { profile: currentUser } = useServerAuth();
   const [searchQuery, setSearchQuery] = useState("");
 
-  useEffect(() => {
-    const fetchCurrentUser = async () => {
-      try {
-        const {
-          data: { session },
-        } = await authSupabase.auth.getSession();
-
-        if (session?.user) {
-          // Fetch user profile
-          const { data } = await authSupabase
-            .from("users")
-            .select("*")
-            .eq("id", session.user.id)
-            .single();
-
-          setCurrentUser(data as UserType);
-        }
-      } catch (error) {
-        console.error("Error fetching current user:", error);
-      }
-    };
-
-    fetchCurrentUser();
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = authSupabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_IN" && session?.user) {
-        const { data } = await authSupabase
-          .from("users")
-          .select("*")
-          .eq("id", session.user.id)
-          .single();
-        setCurrentUser(data as UserType);
-      } else if (event === "SIGNED_OUT") {
-        setCurrentUser(null);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [authSupabase]);
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["admin-users"],

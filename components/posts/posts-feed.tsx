@@ -12,7 +12,7 @@ import { PostSkeleton } from "./post-skeleton";
 import { fetchPosts } from "@/lib/services/posts";
 import { enhancedSearchPosts } from "@/lib/services/search";
 import { PostCategory, SearchFilters } from "@/lib/types";
-import { useAuth } from "@/lib/providers/auth-provider";
+import { useServerAuth } from "@/components/layout/root-layout-client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
@@ -32,7 +32,7 @@ export function PostsFeed({
   isNaturalLanguage = false,
   className,
 }: PostsFeedProps) {
-  const { isAuthenticated, profile } = useAuth();
+  const { isAuthenticated, profile } = useServerAuth();
   const [purchasedPosts, setPurchasedPosts] = useState<Set<string>>(new Set());
   const supabase = createClient();
   const queryClient = useQueryClient();

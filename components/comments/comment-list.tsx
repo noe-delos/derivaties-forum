@@ -9,7 +9,7 @@ import { CommentForm } from "./comment-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { fetchComments } from "@/lib/services/comments";
-import { useAuth } from "@/lib/providers/auth-provider";
+import { useServerAuth } from "@/components/layout/root-layout-client";
 import { Comment } from "@/lib/types";
 import { useState } from "react";
 
@@ -19,7 +19,7 @@ interface CommentListProps {
 }
 
 export function CommentList({ postId, className }: CommentListProps) {
-  const { isAuthenticated, profile } = useAuth();
+  const { isAuthenticated, profile } = useServerAuth();
   const { ref, inView } = useInView();
   const [activeEditor, setActiveEditor] = useState<string | null>(null);
 

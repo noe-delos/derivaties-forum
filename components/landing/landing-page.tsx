@@ -22,7 +22,7 @@ import { Marquee } from "@/components/magicui/marquee";
 import { AnimatedList } from "@/components/magicui/animated-list";
 import { Icon } from "@iconify/react";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/lib/providers/auth-provider";
+import { useServerAuth } from "@/components/layout/root-layout-client";
 import { User, LogOut, Settings } from "lucide-react";
 import { signOutAction } from "@/lib/actions/auth";
 import { toast } from "sonner";
@@ -30,7 +30,7 @@ import { useRouter } from "next/navigation";
 
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
-  const { isAuthenticated, profile } = useAuth();
+  const { isAuthenticated, profile } = useServerAuth();
   const router = useRouter();
 
   const { scrollY } = useScroll();

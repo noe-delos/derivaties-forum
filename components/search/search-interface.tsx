@@ -47,7 +47,7 @@ import {
   isOpenAIAvailable,
 } from "@/lib/services/search";
 import { SearchFilters, POST_CATEGORIES, POST_TYPES } from "@/lib/types";
-import { useAuth } from "@/lib/providers/auth-provider";
+import { useServerAuth } from "@/components/layout/root-layout-client";
 
 interface SearchInterfaceProps {
   initialQuery?: string;
@@ -64,7 +64,7 @@ export function SearchInterface({
 }: SearchInterfaceProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { profile } = useAuth();
+  const { profile } = useServerAuth();
 
   const [query, setQuery] = useState(initialQuery);
   const [filters, setFilters] = useState<SearchFilters>(initialFilters);

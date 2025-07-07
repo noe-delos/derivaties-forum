@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/use-auth";
+import { useServerAuth } from "@/components/layout/root-layout-client";
 
 interface AuthRedirectProps {
   children: React.ReactNode;
@@ -15,26 +15,24 @@ export function AuthRedirect({
   requireAuth = true,
   redirectTo = "/auth/login",
 }: AuthRedirectProps) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated } = useServerAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading) {
-      if (requireAuth && !isAuthenticated) {
-        // Redirect to login if auth is required but user is not authenticated
-        const currentPath = window.location.pathname;
-        const redirectUrl = `${redirectTo}${
-          currentPath !== "/"
-            ? `?redirectTo=${encodeURIComponent(currentPath)}`
-            : ""
-        }`;
-        router.replace(redirectUrl);
-      } else if (!requireAuth && isAuthenticated) {
-        // Redirect authenticated users away from auth pages
-        router.replace(redirectTo);
-      }
+    if (requireAuth && !isAuthenticated) {
+      // Redirect to login if auth is required but user is not authenticated
+      const currentPath = window.location.pathname;
+      const redirectUrl = `${redirectTo}${
+        currentPath !== "/"
+          ? `?redirectTo=${encodeURIComponent(currentPath)}`
+          : ""
+      }`;
+      router.replace(redirectUrl);
+    } else if (!requireAuth && isAuthenticated) {
+      // Redirect authenticated users away from auth pages
+      router.replace(redirectTo);
     }
-  }, [isAuthenticated, isLoading, requireAuth, redirectTo, router]);
+  }, [isAuthenticated, requireAuth, redirectTo, router]);
 
   // If auth is required but user is not authenticated, show nothing (will redirect)
   if (requireAuth && !isAuthenticated) {

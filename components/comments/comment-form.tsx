@@ -8,7 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { TiptapEditor } from "@/components/editor/tiptap-editor";
 import { createComment } from "@/lib/services/comments";
-import { useAuth } from "@/lib/providers/auth-provider";
+import { useServerAuth } from "@/components/layout/root-layout-client";
 
 interface CommentFormProps {
   postId: string;
@@ -23,7 +23,7 @@ export function CommentForm({
   onSuccess,
   placeholder = "Écrivez votre commentaire...",
 }: CommentFormProps) {
-  const { profile } = useAuth();
+  const { profile } = useServerAuth();
   const queryClient = useQueryClient();
   const [content, setContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);

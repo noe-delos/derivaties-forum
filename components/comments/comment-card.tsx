@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CommentForm } from "./comment-form";
 import { Comment } from "@/lib/types";
-import { useAuth } from "@/lib/providers/auth-provider";
+import { useServerAuth } from "@/components/layout/root-layout-client";
 import { voteComment } from "@/lib/services/comments";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -31,7 +31,7 @@ export function CommentCard({
   activeEditor,
   onEditorChange,
 }: CommentCardProps) {
-  const { isAuthenticated, profile } = useAuth();
+  const { isAuthenticated, profile } = useServerAuth();
   const queryClient = useQueryClient();
   const [isVoting, setIsVoting] = useState(false);
 

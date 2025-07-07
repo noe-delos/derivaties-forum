@@ -59,7 +59,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchAllUsers, updateUserRole, banUser } from "@/lib/services/admin";
 import { useSupabase } from "@/hooks/use-supabase";
-import { useAuth } from "@/hooks/use-auth";
+import { useServerAuth } from "@/components/layout/root-layout-client";
 import { UserRole, USER_ROLES } from "@/lib/types";
 import { getUserDisplayName, getUserInitials } from "@/lib/utils";
 
@@ -187,7 +187,7 @@ function UserActionDialog({
 export function UsersManagement() {
   const supabase = useSupabase();
   const queryClient = useQueryClient();
-  const { profile: currentUser } = useAuth();
+  const { profile: currentUser } = useServerAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
 

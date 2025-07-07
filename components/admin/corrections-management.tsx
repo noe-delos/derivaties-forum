@@ -42,10 +42,10 @@ import {
   getCorrectionStats
 } from "@/lib/services/corrections";
 import { Correction } from "@/lib/types";
-import { useAuth } from "@/lib/providers/auth-provider";
+import { useServerAuth } from "@/components/layout/root-layout-client";
 
 export function CorrectionsManagement() {
-  const { profile } = useAuth();
+  const { profile } = useServerAuth();
   const [corrections, setCorrections] = useState<Correction[]>([]);
   const [selectedCorrection, setSelectedCorrection] = useState<Correction | null>(null);
   const [isLoading, setIsLoading] = useState(true);

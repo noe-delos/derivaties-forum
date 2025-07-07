@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
@@ -14,67 +13,31 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useAuth } from "@/hooks/use-auth";
+import { useServerAuth } from "@/components/layout/root-layout-client";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { User as UserType } from "@/lib/types";
 
 export function AdminHeader() {
-  const { supabase, signOut } = useAuth();
-  const [profile, setProfile] = useState<UserType | null>(null);
+  const { profile } = useServerAuth();
   const router = useRouter();
-
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        if (session?.user) {
-          // Fetch user profile
-          const { data } = await supabase
-            .from("users")
-            .select("*")
-            .eq("id", session.user.id)
-            .single();
-
-          setProfile(data as UserType);
-        }
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-      }
-    };
-
-    fetchUserData();
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_IN" && session?.user) {
-        const { data } = await supabase
-          .from("users")
-          .select("*")
-          .eq("id", session.user.id)
-          .single();
-        setProfile(data as UserType);
-      } else if (event === "SIGNED_OUT") {
-        setProfile(null);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [supabase]);
 
   const handleSignOut = async () => {
     try {
       toast.loading("Déconnexion en cours...");
-      await signOut();
+      // Use server action for signout
+      const { signOutAction } = await import("@/lib/actions/auth");
+      const result = await signOutAction();
+      
       toast.dismiss();
-      toast.success("Déconnexion réussie !");
+      
+      if (result.success) {
+        toast.success(result.message || "Déconnexion réussie !");
+        router.push("/");
+        router.refresh();
+      } else {
+        toast.error(result.error || "Erreur lors de la déconnexion");
+      }
     } catch (error) {
       console.error("Error during logout:", error);
       toast.dismiss();

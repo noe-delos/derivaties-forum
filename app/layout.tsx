@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/lib/providers/query-provider";
-import { AuthProvider } from "@/lib/providers/auth-provider";
 import { Toaster } from "sonner";
+import { createClient } from "@/lib/supabase/server";
+import { User as UserType } from "@/lib/types";
+import { RootLayoutClient } from "@/components/layout/root-layout-client";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -13,15 +15,35 @@ export const metadata: Metadata = {
     "Plateforme de discussion dédiée aux entretiens en finance, aux stages et aux conseils entre étudiants et professionnels.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const supabase = await createClient();
+
+  // Get current user
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let profile: UserType | null = null;
+
+  // If user is authenticated, fetch their profile
+  if (user) {
+    const { data } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    profile = data as UserType;
+  }
+
   return (
     <html lang="fr">
       <body className={inter.className}>
-        <AuthProvider>
+        <RootLayoutClient isAuthenticated={!!user} profile={profile}>
           <QueryProvider>
             {children}
             <Toaster 
@@ -38,7 +60,7 @@ export default function RootLayout({
               }}
             />
           </QueryProvider>
-        </AuthProvider>
+        </RootLayoutClient>
       </body>
     </html>
   );

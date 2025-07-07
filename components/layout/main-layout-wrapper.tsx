@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/hooks/use-auth";
+import { useServerAuth } from "./root-layout-client";
 import { MainLayoutClient } from "./main-layout-client";
 
 interface MainLayoutWrapperProps {
@@ -8,7 +8,7 @@ interface MainLayoutWrapperProps {
 }
 
 export function MainLayoutWrapper({ children }: MainLayoutWrapperProps) {
-  const { isAuthenticated, profile, isLoading } = useAuth();
+  const { isAuthenticated, profile } = useServerAuth();
 
   return (
     <MainLayoutClient isAuthenticated={isAuthenticated} profile={profile}>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/hooks/use-auth";
+import { useServerAuth } from "@/components/layout/root-layout-client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -39,15 +39,15 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = useSupabase();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated } = useServerAuth();
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (!authLoading && isAuthenticated) {
+    if (isAuthenticated) {
       const redirectTo = searchParams.get("redirectTo") || "/forum";
       router.push(redirectTo);
     }
-  }, [isAuthenticated, authLoading, router, searchParams]);
+  }, [isAuthenticated, router, searchParams]);
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema) as any,
