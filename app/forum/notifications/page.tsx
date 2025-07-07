@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { NotificationsPage } from "@/components/notifications/notifications-page";
 import { User as UserType } from "@/lib/types";
 
@@ -7,10 +7,10 @@ export default async function NotificationsPageWrapper() {
   const supabase = await createClient();
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (!session?.user) {
+  if (!user) {
     redirect("/auth/login?redirectTo=/forum/notifications");
   }
 
@@ -18,7 +18,7 @@ export default async function NotificationsPageWrapper() {
   const { data: profile } = await supabase
     .from("users")
     .select("*")
-    .eq("id", session.user.id)
+    .eq("id", user.id)
     .single();
 
   if (!profile) {

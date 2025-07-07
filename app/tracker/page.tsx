@@ -3,7 +3,7 @@ import {
   QueryClient,
   dehydrate,
 } from "@tanstack/react-query";
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { TrackerInterface } from "@/components/tracker/tracker-interface";
 import { fetchFinanceJobs, fetchFinanceJobStats, getUniqueCompanies, getUniqueLocations } from "@/lib/services/finance-jobs";

@@ -6,6 +6,15 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { DotPattern } from "@/components/magicui/dot-pattern";
 import { BentoCard, BentoGrid } from "@/components/magicui/bento-grid";
@@ -13,9 +22,16 @@ import { Marquee } from "@/components/magicui/marquee";
 import { AnimatedList } from "@/components/magicui/animated-list";
 import { Icon } from "@iconify/react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/providers/auth-provider";
+import { User, LogOut, Settings } from "lucide-react";
+import { signOutAction } from "@/lib/actions/auth";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
+  const { isAuthenticated, profile } = useAuth();
+  const router = useRouter();
 
   const { scrollY } = useScroll();
   const headerOpacity = useTransform(scrollY, [0, 100], [0, 1]);
@@ -81,6 +97,39 @@ export default function LandingPage() {
     },
   ];
 
+  const handleSignOut = async () => {
+    try {
+      toast.loading("Déconnexion en cours...");
+
+      // Use server action for signout
+      const result = await signOutAction();
+
+      toast.dismiss();
+
+      if (result.success) {
+        toast.success(result.message || "Déconnexion réussie !");
+        router.push("/");
+        router.refresh();
+      } else {
+        toast.error(result.error || "Erreur lors de la déconnexion");
+      }
+    } catch (error) {
+      console.error("Error during logout:", error);
+      toast.dismiss();
+      toast.error("Erreur lors de la déconnexion");
+    }
+  };
+
+  const getUserInitials = () => {
+    if (profile?.first_name && profile?.last_name) {
+      return `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase();
+    }
+    if (profile?.username) {
+      return profile.username.slice(0, 2).toUpperCase();
+    }
+    return "U";
+  };
+
   useEffect(() => {
     const handleScroll = () => {
       const isScrolled = window.scrollY > 20;
@@ -142,39 +191,181 @@ export default function LandingPage() {
 
             {/* Right side actions */}
             <div className="flex items-center space-x-2 sm:space-x-4">
-              <Link href="/auth/login" className="hidden sm:block">
-                <Button
-                  variant="outline"
-                  className={`transition-colors duration-300 text-sm ${
-                    scrolled
-                      ? "border-zinc-300 text-zinc-700 hover:bg-zinc-100"
-                      : "border-white text-white hover:bg-white hover:text-zinc-900"
-                  }`}
-                >
-                  Connexion
-                </Button>
-              </Link>
-              <Link href="/auth/signup">
-                <Button className="bg-zinc-600 hover:bg-zinc-700 text-white text-xs sm:text-sm px-3 sm:px-4">
-                  Inscription
-                </Button>
-              </Link>
+              {isAuthenticated && profile ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="relative h-8 w-8 rounded-full"
+                    >
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage
+                          src={profile.profile_picture_url}
+                          alt={
+                            profile.first_name
+                              ? `${profile.first_name} ${profile.last_name}`
+                              : profile.username || "User"
+                          }
+                        />
+                        <AvatarFallback>{getUserInitials()}</AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-64 rounded-2xl shadow-sm border border-border/50 p-3" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal p-3">
+                      <div className="flex flex-col space-y-2">
+                        <p className="text-sm font-medium leading-none">
+                          {profile.first_name && profile.last_name
+                            ? `${profile.first_name} ${profile.last_name}`
+                            : profile.username}
+                        </p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                          {profile.email}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Badge variant="outline" className="text-xs rounded-full">
+                            {profile.role}
+                          </Badge>
+                        </div>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+
+                    <DropdownMenuItem asChild className="rounded-xl p-3 my-1">
+                      <Link href={`/forum/profile/${profile.id}`}>
+                        <User className="mr-2 h-4 w-4" />
+                        <span>Profil</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="rounded-xl p-3 my-1">
+                      <Link href="/forum/settings">
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Paramètres</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="rounded-xl p-3 my-1">
+                      <Link href="/forum">
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Forum</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={handleSignOut}
+                      className="cursor-pointer rounded-xl p-3 my-1"
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Déconnexion</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <>
+                  <Link href="/auth/login" className="hidden sm:block">
+                    <Button
+                      variant="outline"
+                      className={`transition-colors duration-300 text-sm ${
+                        scrolled
+                          ? "border-zinc-300 text-zinc-700 hover:bg-zinc-100"
+                          : "border-white text-white hover:bg-white hover:text-zinc-900"
+                      }`}
+                    >
+                      Connexion
+                    </Button>
+                  </Link>
+                  <Link href="/auth/signup">
+                    <Button className="bg-zinc-600 hover:bg-zinc-700 text-white text-xs sm:text-sm px-3 sm:px-4">
+                      Inscription
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
 
             <div className="sm:hidden">
-              <Link href="/auth/login">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className={`transition-colors duration-300 text-sm ${
-                    scrolled
-                      ? "border-zinc-300 text-zinc-700 hover:bg-zinc-100"
-                      : "border-white text-white hover:bg-white hover:text-zinc-900"
-                  }`}
-                >
-                  Connexion
-                </Button>
-              </Link>
+              {isAuthenticated && profile ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="relative h-8 w-8 rounded-full"
+                    >
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage
+                          src={profile.profile_picture_url}
+                          alt={
+                            profile.first_name
+                              ? `${profile.first_name} ${profile.last_name}`
+                              : profile.username || "User"
+                          }
+                        />
+                        <AvatarFallback>{getUserInitials()}</AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-64 rounded-2xl shadow-sm border border-border/50 p-3" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal p-3">
+                      <div className="flex flex-col space-y-2">
+                        <p className="text-sm font-medium leading-none">
+                          {profile.first_name && profile.last_name
+                            ? `${profile.first_name} ${profile.last_name}`
+                            : profile.username}
+                        </p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                          {profile.email}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Badge variant="outline" className="text-xs rounded-full">
+                            {profile.role}
+                          </Badge>
+                        </div>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+
+                    <DropdownMenuItem asChild className="rounded-xl p-3 my-1">
+                      <Link href={`/forum/profile/${profile.id}`}>
+                        <User className="mr-2 h-4 w-4" />
+                        <span>Profil</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="rounded-xl p-3 my-1">
+                      <Link href="/forum/settings">
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Paramètres</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="rounded-xl p-3 my-1">
+                      <Link href="/forum">
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Forum</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={handleSignOut}
+                      className="cursor-pointer rounded-xl p-3 my-1"
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Déconnexion</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Link href="/auth/login">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className={`transition-colors duration-300 text-sm ${
+                      scrolled
+                        ? "border-zinc-300 text-zinc-700 hover:bg-zinc-100"
+                        : "border-white text-white hover:bg-white hover:text-zinc-900"
+                    }`}
+                  >
+                    Connexion
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         </nav>

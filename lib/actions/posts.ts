@@ -98,6 +98,7 @@ export async function createPostAction(data: CreatePostData) {
       tags: data.tags,
       is_public: data.is_public,
       user_id: data.userId,
+      city: data.city || 'paris',
     });
 
     console.log("✅ Server Action: Post created successfully:", createdPost.id);
@@ -146,6 +147,7 @@ export async function createPostServer(data: CreatePostData) {
         tags: data.tags,
         is_public: data.is_public,
         user_id: data.userId,
+        city: data.city || 'paris',
         status: "pending",
       })
       .select()

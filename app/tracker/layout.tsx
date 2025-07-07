@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { User as UserType } from "@/lib/types";
 import { MainLayoutClient } from "@/components/layout/main-layout-client";
 
@@ -9,26 +9,26 @@ export default async function TrackerLayout({
 }) {
   const supabase = await createClient();
 
-  // Get current session
+  // Get current user - use getUser() instead of getSession() for better reliability
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
   let profile: UserType | null = null;
 
   // If user is authenticated, fetch their profile
-  if (session?.user) {
+  if (user) {
     const { data } = await supabase
       .from("users")
       .select("*")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single();
 
     profile = data as UserType;
   }
 
   return (
-    <MainLayoutClient isAuthenticated={!!session?.user} profile={profile}>
+    <MainLayoutClient isAuthenticated={!!user} profile={profile}>
       {children}
     </MainLayoutClient>
   );

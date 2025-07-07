@@ -9,7 +9,7 @@ import { PostCard } from "@/components/posts/post-card";
 import { CorrectionsSectionWrapper } from "@/components/corrections/corrections-section-wrapper";
 import { BackButton } from "@/components/ui/back-button";
 import { fetchPost } from "@/lib/services/posts";
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { User as UserType } from "@/lib/types";
 
 interface PostPageProps {
@@ -23,18 +23,18 @@ export default async function PostPage({ params }: PostPageProps) {
   const supabase = await createClient();
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
   let profile: UserType | null = null;
-  const isAuthenticated = !!session?.user;
+  const isAuthenticated = !!user;
 
   // If user is authenticated, fetch their profile
-  if (session?.user) {
+  if (user) {
     const { data } = await supabase
       .from("users")
       .select("*")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single();
 
     profile = data as UserType;

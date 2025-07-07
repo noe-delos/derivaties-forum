@@ -330,12 +330,16 @@ export async function createPost(postData: {
   tags: string[];
   is_public: boolean;
   user_id: string;
+  city: string;
 }) {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("posts")
-    .insert(postData)
+    .insert({
+      ...postData,
+      city: postData.city || 'paris',
+    })
     .select()
     .single();
 

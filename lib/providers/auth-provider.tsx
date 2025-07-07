@@ -63,21 +63,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // Get initial session
+    // Get initial user - use getUser() instead of getSession() for better reliability
     const initializeAuth = async () => {
       try {
         setIsLoading(true);
         const {
-          data: { session },
+          data: { user },
           error,
-        } = await supabase.auth.getSession();
+        } = await supabase.auth.getUser();
 
         if (error) throw error;
 
         if (mounted) {
-          if (session?.user) {
-            setUser(session.user);
-            await fetchProfile(session.user.id);
+          if (user) {
+            setUser(user);
+            await fetchProfile(user.id);
           } else {
             setUser(null);
             setProfile(null);
