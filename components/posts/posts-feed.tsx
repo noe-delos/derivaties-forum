@@ -42,6 +42,12 @@ export function PostsFeed({
     rootMargin: "100px",
   });
 
+  // Prefetch trigger - earlier than the actual load trigger
+  const { ref: prefetchRef, inView: prefetchInView } = useInView({
+    threshold: 0,
+    rootMargin: "500px", // Trigger prefetch 500px before the bottom
+  });
+
   // Fetch purchased posts for authenticated users
   useEffect(() => {
     async function fetchPurchasedPosts() {
@@ -164,6 +170,66 @@ export function PostsFeed({
     }
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
+  // Prefetch the next page when user is approaching the bottom
+  const prefetchNext = useCallback(async () => {
+    if (!hasNextPage || isFetchingNextPage) return;
+
+    const nextPageParam = data?.pages[data.pages.length - 1]?.nextPage;
+    if (nextPageParam === undefined) return;
+
+    // Prefetch the next page
+    await queryClient.prefetchInfiniteQuery({
+      queryKey: [
+        "posts",
+        category,
+        filters,
+        searchQuery,
+        isNaturalLanguage,
+        isAuthenticated,
+      ],
+      queryFn: ({ pageParam = 0 }) => {
+        if (shouldUseSearch) {
+          return enhancedSearchPosts({
+            query: searchQuery.trim(),
+            filters: filters || {},
+            pageParam,
+            isAuthenticated,
+            isNaturalLanguage,
+          });
+        } else {
+          return fetchPosts({
+            pageParam,
+            category,
+            filters,
+            isAuthenticated,
+          });
+        }
+      },
+      initialPageParam: 0,
+      getNextPageParam: (lastPage) => lastPage.nextPage,
+      pages: 1, // Only prefetch one page ahead
+    });
+  }, [
+    hasNextPage,
+    isFetchingNextPage,
+    data,
+    queryClient,
+    category,
+    filters,
+    searchQuery,
+    isNaturalLanguage,
+    isAuthenticated,
+    shouldUseSearch,
+  ]);
+
+  // Trigger prefetch when approaching the bottom
+  useEffect(() => {
+    if (prefetchInView) {
+      console.log("🔮 Prefetch triggered - loading next page in background");
+      prefetchNext();
+    }
+  }, [prefetchInView, prefetchNext]);
+
   useEffect(() => {
     if (inView) {
       console.log("👁️ Intersection observer triggered - fetching next page");
@@ -256,6 +322,13 @@ export function PostsFeed({
             </motion.div>
           );
         })}
+
+        {/* Prefetch trigger - invisible element that triggers earlier */}
+        <div
+          ref={prefetchRef}
+          className="col-span-1 md:col-span-2 h-0"
+          aria-hidden="true"
+        />
 
         {/* Infinite scroll trigger - spans both columns */}
         <div
